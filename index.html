@@ -1,1 +1,239 @@
-<h1>Vocab 單字王 測試成功 🐾</h1>
+<!DOCTYPE html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><title>Vocab 單字王</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link href="https://fonts.googleapis.com/css2?family=Chiron+GoRound+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#E6F6EE;--card:#fff;--ink:#3B2F4A;--sub:#7B6F8A;--pk:#FF7E8B;--pk2:#FFE0E4;--bt:#FFC857;--gn:#3DBE8B;--gn2:#D4F4E5;--rd:#E5575F;--rd2:#FFE1E3;--ln:#CBE7D9;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#172321;--card:#243532;--ink:#F4EEF8;--sub:#B7ABC4;--pk2:#4A2E36;--gn2:#1F4A3B;--rd2:#4D2A2E;--ln:#34504A}}
+:root[data-theme="dark"]{--bg:#172321;--card:#243532;--ink:#F4EEF8;--sub:#B7ABC4;--pk2:#4A2E36;--gn2:#1F4A3B;--rd2:#4D2A2E;--ln:#34504A}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Chiron GoRound TC','Noto Sans TC','PingFang TC','Microsoft JhengHei',system-ui,sans-serif;font-size:16px;line-height:1.5}
+.app{max-width:640px;margin:0 auto;padding:10px 14px 110px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:6px 0 10px}
+.who{display:flex;gap:10px;align-items:center}.who b{font-size:17px}.lv{font-size:13px;color:var(--sub)}
+.av{position:relative;display:inline-flex;align-items:center;justify-content:center;background:var(--pk2);border:3px solid var(--bt);border-radius:50%;flex:none;line-height:1}
+.av i{position:absolute;top:-6px;right:-8px;font-style:normal;background:var(--card);border-radius:50%;padding:1px 2px;box-shadow:0 1px 4px #0003}
+.av.l4{border-color:var(--pk)}.av.l5{border-color:var(--gn);box-shadow:0 0 0 3px var(--bt)}
+.chip{border:2px solid var(--pk);background:var(--card);color:var(--pk);border-radius:99px;padding:2px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;margin-top:2px}
+.pts{background:var(--bt);color:#4a3200;border-radius:99px;padding:6px 14px;font-weight:900}
+.btn{border:0;border-radius:99px;background:var(--pk);color:#fff;font:inherit;font-weight:700;padding:11px 20px;cursor:pointer;box-shadow:0 4px 0 #d95a69;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #d95a69}.btn:disabled{opacity:.4;cursor:default}
+.btn.ghost{background:var(--card);color:var(--ink);box-shadow:0 4px 0 var(--ln);border:2px solid var(--ln)}
+.btn.big{width:100%;padding:14px;font-size:18px}.btn.sm{padding:5px 12px;font-size:13px;box-shadow:none}
+.row{display:flex;gap:10px;justify-content:center;margin:14px 0;flex-wrap:wrap}.row .btn{flex:1;min-width:130px}
+.cnt{text-align:center;color:var(--sub);font-weight:700}
+.card{perspective:1000px;height:300px;margin-top:8px;cursor:pointer}
+.card .in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s}
+.card.fl .in{transform:rotateY(180deg)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--card);border:3px solid var(--ln);border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;text-align:center;box-shadow:0 8px 0 var(--ln)}
+.face.back{transform:rotateY(180deg);background:var(--pk2);border-color:var(--pk)}
+.en{font-size:clamp(34px,10vw,50px);font-weight:900;word-break:break-word;line-height:1.15}.kk{color:var(--pk);font-size:20px;margin:6px 0}.zh{font-size:22px;font-weight:700}
+.face small{position:absolute;bottom:12px;color:var(--sub)}.ex{font-size:21px;font-weight:700}.exz{margin-top:12px;color:var(--sub);font-size:17px}
+.box{background:var(--card);border:2px solid var(--ln);border-radius:22px;padding:16px;margin-bottom:12px}
+.empty{text-align:center;padding:40px 10px}.empty .big{font-size:64px}.empty p{color:var(--sub)}
+.modes{display:grid;gap:12px;margin-top:10px}.mode{text-align:left;border:3px solid var(--ln);background:var(--card);color:var(--ink);border-radius:22px;padding:16px;font:inherit;cursor:pointer}
+.mode b{font-size:18px;display:block}.mode span{color:var(--sub);font-size:14px}.mode:active{border-color:var(--pk)}
+.prog{height:12px;background:var(--ln);border-radius:9px;overflow:hidden;margin:6px 0 14px}.prog div{height:100%;background:var(--pk);transition:width .3s}
+.q{font-size:clamp(28px,8vw,40px);font-weight:900;text-align:center;margin:10px 0 4px;word-break:break-word}
+.opt{display:block;width:100%;text-align:left;border:3px solid var(--ln);background:var(--card);color:var(--ink);border-radius:18px;padding:13px 16px;font:inherit;font-size:18px;margin-bottom:10px;cursor:pointer}
+.opt.ok{background:var(--gn2);border-color:var(--gn)}.opt.no{background:var(--rd2);border-color:var(--rd)}
+.hint{font-size:32px;letter-spacing:4px;text-align:center;font-weight:900;margin:12px 0;word-break:break-all}
+input[type=text],input[type=password]{width:100%;border:3px solid var(--ln);background:var(--card);color:var(--ink);border-radius:16px;padding:12px 14px;font:inherit;font-size:20px;margin:6px 0 10px;text-align:center}
+.fb{border-radius:18px;padding:12px 16px;font-weight:700;margin:6px 0 12px}.fb.ok{background:var(--gn2)}.fb.no{background:var(--rd2)}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.stat{background:var(--card);border:2px solid var(--ln);border-radius:20px;text-align:center;padding:14px}.stat b{font-size:30px;display:block}
+.wr{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:2px dashed var(--ln)}.wr:last-child{border:0}
+.rk{display:flex;align-items:center;gap:10px;background:var(--card);border:2px solid var(--ln);border-radius:20px;padding:10px 14px;margin-bottom:8px}
+.rk.me{border-color:var(--pk);background:var(--pk2)}.rk .n{width:34px;text-align:center;font-weight:900;font-size:20px}.rk .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.rk small{display:block;color:var(--sub);font-weight:400}.rk .sc{font-weight:900;color:var(--pk);font-size:19px}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:2px solid var(--ln);display:flex;justify-content:center;padding:6px 6px calc(6px + env(safe-area-inset-bottom,0px));z-index:5}
+nav div{display:flex;width:100%;max-width:640px}nav button{flex:1;border:0;background:none;color:var(--sub);font:inherit;font-size:12px;padding:4px 0;cursor:pointer;border-radius:14px}
+nav button span{display:block;font-size:22px}nav button.on{color:var(--pk);font-weight:900;background:var(--pk2)}
+.mask{position:fixed;inset:0;background:#0007;display:flex;align-items:center;justify-content:center;padding:18px;z-index:9}.modal{background:var(--card);border-radius:26px;max-width:420px;width:100%;padding:20px;max-height:85vh;overflow:auto}
+.setup{max-width:480px;margin:0 auto;padding:24px 16px;text-align:center}.setup h1{margin:6px 0}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}
+.ani{border:3px solid var(--ln);background:var(--card);color:var(--ink);border-radius:18px;padding:8px 0;font:inherit;cursor:pointer}.ani span{font-size:34px;display:block}.ani small{font-size:12px}.ani.on{border-color:var(--pk);background:var(--pk2)}
+.note{color:var(--sub);font-size:13px}.up{display:block;text-align:center;border:3px dashed var(--pk);border-radius:22px;padding:22px;cursor:pointer;color:var(--pk);font-weight:700}
+.tag{display:inline-flex;align-items:center;gap:6px;background:var(--pk2);border-radius:14px;padding:6px 10px;margin:4px 4px 0 0}.tag button{border:0;background:none;color:var(--rd);cursor:pointer;font-size:16px}
+.warn{background:var(--rd2);border-radius:16px;padding:10px 14px;margin-bottom:10px;font-weight:700}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:90px;background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:99px;z-index:20;font-weight:700}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}.tbl td,.tbl th{border-bottom:2px dashed var(--ln);padding:5px 6px;text-align:left}textarea{width:100%;min-height:130px;border:3px solid var(--ln);border-radius:16px;background:var(--card);color:var(--ink);font:inherit;font-size:14px;padding:10px}@media print{header,nav,.noprint{display:none!important}}
+.pos{display:inline-block;background:var(--pk2);color:var(--pk);border-radius:10px;padding:0 8px;margin-right:8px;font-size:16px;font-weight:900}
+select{border:3px solid var(--ln);background:var(--card);color:var(--ink);border-radius:14px;padding:8px 10px;font:inherit;max-width:100%}
+</style></head>
+<body><div id="root"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useEffect,useRef}=React;
+const CFG={apiKey:"AIzaSyC6sNBox_bFjC9bYMlYQYQ2xT97hHpdhKc",authDomain:"vocab-king-6c6f7.firebaseapp.com",projectId:"vocab-king-6c6f7",storageBucket:"vocab-king-6c6f7.firebasestorage.app",messagingSenderId:"109038507073",appId:"1:109038507073:web:2ad621bbec81c5cf2662c0",measurementId:"G-84K44JMS8W"};
+const TEACHER="pfchenn611@gmail.com";
+firebase.initializeApp(CFG);
+const ANIMALS=[["🐶","小狗"],["🐱","小貓"],["🐰","兔兔"],["🐻","小熊"],["🐼","貓熊"],["🦊","狐狸"],["🐸","青蛙"],["🐥","小雞"],["🦁","獅子"],["🐯","老虎"]];
+const LV=[[0,"蛋殼見習生","🥚","100 分以下"],[100,"字母啃食怪","🔤","100–300"],[300,"單字大胃王","🍔","300–600"],[600,"詞彙美食家","🍰","600–1000"],[1000,"傳說級飼養員","🏆","1000–1500"],[1500,"至尊單字王","👑","1500 以上"]];
+const lvOf=s=>{let k=0;LV.forEach((l,i)=>{if((s||0)>=l[0])k=i});return k};
+const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
+const norm=s=>String(s).toLowerCase().replace(/\s+/g,"");
+function speak(t){try{const s=window.speechSynthesis;s.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=.9;const vs=s.getVoices().filter(v=>/^en[-_]US/i.test(v.lang));u.voice=vs.find(v=>/Google US|Samantha|Aria|Jenny|Natural|Siri|Ava|Allison/i.test(v.name))||vs[0]||null;s.speak(u)}catch(e){}}
+
+function Av({a,score,size=48}){const k=lvOf(score);return <span className={"av l"+k} style={{width:size,height:size,fontSize:size*.6}}>{a}<i style={{fontSize:size*.36}}>{LV[k][2]}</i></span>}
+function Empty({icon,t,s,children}){return <div className="empty"><div className="big">{icon}</div><b>{t}</b><p>{s}</p>{children}</div>}
+
+function ChangePw(){
+  const [o,setO]=useState(""),[n,setN]=useState(""),[m,setM]=useState(""),[b,setB]=useState(false);
+  const go=async()=>{setB(true);setM("");try{const u=firebase.auth().currentUser;await u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email,o));await u.updatePassword(n);setM("✅ 密碼已更新，下次請用新密碼登入");setO("");setN("")}catch(e){setM(e.code==="auth/weak-password"?"新密碼至少要 6 個字元":"目前的密碼不正確，或發生錯誤，請再試一次")}setB(false)};
+  return <div className="box" style={{marginTop:18,textAlign:"left"}}><b>修改密碼</b>
+  <input type="password" value={o} onChange={e=>setO(e.target.value)} placeholder="目前的密碼"/>
+  <input type="password" value={n} onChange={e=>setN(e.target.value)} placeholder="新密碼（至少 6 個字元）"/>
+  <button className="btn ghost big" disabled={!o||n.length<6||b} onClick={go}>{b?"更新中…":"更新密碼"}</button>{m&&<p className="note">{m}</p>}</div>}
+function Setup({init,onSave,onCancel}){
+  const [a,setA]=useState(init?init.animal:"");const [n,setN]=useState(init?init.name:"");
+  return <div className="setup"><div style={{fontSize:56}}>🐾</div><h1>Vocab 單字王</h1><p>選一隻夥伴，取個名字吧！</p>
+  <div className="grid">{ANIMALS.map(([e,nm])=><button key={e} className={"ani"+(a===e?" on":"")} onClick={()=>setA(e)}><span>{e}</span><small>{nm}</small></button>)}</div>
+  <input type="text" maxLength={10} value={n} onChange={e=>setN(e.target.value)} placeholder="帳號名稱（最多 10 字）"/>
+  <button className="btn big" disabled={!a||!n.trim()} onClick={()=>onSave({animal:a,name:n.trim()})}>{init?"儲存":"開始冒險"}</button>
+  {onCancel&&<p><button className="btn ghost sm" onClick={onCancel}>取消</button></p>}{init&&<ChangePw/>}
+  <p className="note">帳號會綁定你目前登入的帳號（Google 信箱）與這台裝置；換手機或電腦時，用同一個帳號登入即可。</p></div>}
+
+function ScopeSel({sets,sel,setSel,wn}){return <div className="box" style={{padding:"10px 14px"}}><label>📚 單字範圍　<select value={sel} onChange={e=>setSel(e.target.value)}><option value="*">全部</option>{sets.map(t=><option key={t} value={t}>{t}</option>)}{wn>0&&<option value="__wrong">📕 錯題區（{wn}）</option>}</select></label></div>}
+function Wrong({list,go}){
+  if(!list.length)return <Empty icon="📕" t="錯題區是空的" s="測驗答錯的單字會自動放在這裡，下次答對就會移除"/>;
+  return <div><div className="row"><button className="btn" onClick={()=>go("quiz")}>📝 測驗錯題</button><button className="btn ghost" onClick={()=>go("card")}>🃏 單字卡複習</button></div>
+  {list.map(w=><div className="box" key={w.en}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><div><b style={{fontSize:20}}>{w.en}</b> <small className="note">{w.kk}</small><div>{w.pos&&<span className="pos">{w.pos}</span>}{w.zh}</div></div><button className="btn sm" onClick={()=>speak(w.en)}>🔊</button></div></div>)}</div>}
+function Cards({words,teacher,goTeach,picker}){
+  const [i,setI]=useState(0),[f,setF]=useState(false);
+  if(!words.length)return <div>{picker}<Empty icon="🥚" t="這裡還沒有單字" s="請選別的範圍，或等老師上傳教材圖片喔！">{teacher&&<button className="btn" onClick={goTeach}>前往上傳教材</button>}</Empty></div>;
+  const k=Math.min(i,words.length-1),w=words[k];
+  const go=d=>{setF(false);setI((k+d+words.length)%words.length)};
+  return <div>{picker}<div className="cnt">{k+1} / {words.length}</div>
+  <div className={"card"+(f?" fl":"")} onClick={()=>setF(!f)}><div className="in">
+    <div className="face"><div className="en">{w.en}</div><div className="kk">{w.kk}</div><div className="zh">{w.pos&&<span className="pos">{w.pos}</span>}{w.zh}</div><small>點一下卡片看例句</small></div>
+    <div className="face back"><div className="ex">{w.ex}</div><div className="exz">{w.exzh}</div></div></div></div>
+  <div className="row"><button className="btn" onClick={()=>speak(w.en)}>🔊 單字發音</button><button className="btn" onClick={()=>speak(w.ex)}>🔊 播放例句</button></div>
+  <div className="row"><button className="btn ghost" onClick={()=>go(-1)}>◀ 上一個</button><button className="btn ghost" onClick={()=>go(1)}>下一個 ▶</button></div></div>}
+
+function Quiz({words,scoped,picker,onDone,auto}){
+  const [mode,setMode]=useState(null),[qs,setQs]=useState([]),[k,setK]=useState(0),[res,setRes]=useState(null),[txt,setTxt]=useState(""),[log,setLog]=useState([]);
+  const start=m=>{let pool=m==="fill"?scoped.filter(w=>w.en.length>=3):scoped;if(!pool.length)pool=scoped;
+    const base=shuffle(pool),list=[];for(let i=0;i<10;i++)list.push(base[i%base.length]);
+    setQs(list.map(w=>({w,opts:m==="fill"?null:shuffle([w,...shuffle(words.filter(x=>x.en!==w.en&&x.zh!==w.zh)).slice(0,3)])})));
+    setMode(m);setK(0);setRes(null);setTxt("");setLog([])};
+  useEffect(()=>{if(auto&&words.length>=4&&scoped.length)start(auto)},[]);
+  if(words.length<4)return <Empty icon="📝" t="單字還不夠" s={`至少需要 4 個單字才能出題（目前 ${words.length} 個）`}/>;
+  if(!mode&&!scoped.length)return <div>{picker}<Empty icon="📝" t="這個範圍沒有單字" s="請換一個單字範圍"/></div>;
+  if(!mode)return <div><h2 style={{textAlign:"center"}}>選一種測驗吧！</h2>{picker}<div className="modes">
+    <button className="mode" onClick={()=>start("en2zh")}><b>🇬🇧 英選中</b><span>看英文，從四個選項選出中文意思</span></button>
+    <button className="mode" onClick={()=>start("zh2en")}><b>🇹🇼 中選英</b><span>看中文，從四個選項選出英文單字</span></button>
+    <button className="mode" onClick={()=>start("fill")}><b>✏️ 填空</b><span>給中文與頭尾字母，填入中間的字母（答對每題 +3 分）</span></button></div>
+    <p className="note" style={{textAlign:"center"}}>每回 10 題。英選中、中選英答對 +2 分，填空答對 +3 分，十題全對再 +5 分，答錯不扣分</p></div>;
+  const q=qs[k],w=q.w;
+  const reveal=(ok,ans)=>{setRes({ok,ans});speak(w.en)};
+  const next=()=>{const nl=[...log,{w,ok:res.ok}];
+    if(k>=9){const c=nl.filter(x=>x.ok).length;onDone({mode,total:10,correct:c,bonus:c===10?5:0,gain:c*(mode==="fill"?3:2)+(c===10?5:0),all:nl,wrong:nl.filter(x=>!x.ok).map(x=>x.w)})}
+    else{setLog(nl);setK(k+1);setRes(null);setTxt("")}};
+  const mid=w.en.slice(1,-1);
+  return <div><div className="cnt">第 {k+1} / 10 題</div><div className="prog"><div style={{width:(k+(res?1:0))*10+"%"}}/></div>
+  {mode==="en2zh"&&<div className="q">{w.en}</div>}
+  {mode!=="en2zh"&&<div className="q" style={{fontSize:30}}>{w.zh}</div>}
+  {mode==="fill"?<div>
+    <div className="hint">{w.en[0]}{[...mid].map((c,i)=>c===" "?" ":"＿")}{w.en.slice(-1)}</div>
+    {!res&&<div><input type="text" autoCapitalize="none" autoComplete="off" value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&txt.trim())reveal(norm(txt)===norm(mid),w.en)}} placeholder="填入中間的字母"/>
+    <button className="btn big" disabled={!txt.trim()} onClick={()=>reveal(norm(txt)===norm(mid),w.en)}>確認答案</button></div>}
+  </div>:<div style={{marginTop:14}}>{q.opts.map(o=>{const t=mode==="en2zh"?o.zh:o.en;const good=o.en===w.en;const chosen=res&&res.ans===o.en;
+    return <button key={o.en} className={"opt"+(res&&good?" ok":"")+(chosen&&!good?" no":"")} disabled={!!res} onClick={()=>reveal(good,o.en)}>{t}</button>})}</div>}
+  {res&&<div><div className={"fb "+(res.ok?"ok":"no")}>{res.ok?`✅ 答對了！+${mode==="fill"?3:2} 分`:<span>❌ 答錯了，正確答案：{mode==="en2zh"?w.zh:w.en}{mode==="fill"&&<span>（{w.en}）</span>}</span>}</div>
+    <button className="btn big" onClick={next}>{k>=9?"看結果 🎉":"下一題 ▶"}</button></div>}</div>}
+
+function Result({r,retry,goCard}){
+  if(!r)return <Empty icon="📊" t="還沒有測驗結果" s="完成一次測驗後，成績會顯示在這裡"/>;
+  const pct=Math.round(r.correct/r.total*100);
+  return <div><div className="box" style={{textAlign:"center"}}><div style={{fontSize:56}}>{pct===100?"🏆":pct>=60?"🎉":"💪"}</div><b>本回獲得 +{r.gain} 分</b>{r.bonus>0&&<div className="note">含十題全對獎勵 +5 分</div>}</div>
+  <div className="stats"><div className="stat"><b>{r.total}</b>總題數</div><div className="stat"><b style={{color:"var(--gn)"}}>{r.correct}</b>答對</div><div className="stat"><b style={{color:"var(--rd)"}}>{r.total-r.correct}</b>答錯</div><div className="stat"><b>{pct}%</b>正確率</div></div>
+  <div className="box" style={{marginTop:12}}><b>答錯的單字</b>{r.wrong.length===0?<p className="note">全部答對，太強了！</p>:r.wrong.map((w,i)=><div className="wr" key={i}><span><b>{w.en}</b> <small className="note">{w.kk}</small></span><span>{w.zh}</span></div>)}</div>
+  <p className="note" style={{textAlign:"center"}}>答錯的單字已放進「錯題區」，下次答對就會自動移除。</p><div className="row"><button className="btn" onClick={retry}>🔁 重新測驗</button><button className="btn ghost" onClick={goCard}>🃏 返回單字卡</button></div></div>}
+
+function Board({players,meId}){
+  if(!players.length)return <Empty icon="🏆" t="排行榜還是空的" s="完成測驗拿到分數就會上榜"/>;
+  return <div>{players.map((p,i)=><div key={p.id} className={"rk"+(p.id===meId?" me":"")}><div className="n">{["🥇","🥈","🥉"][i]||i+1}</div><Av a={p.animal} score={p.score} size={42}/><div className="nm">{p.name}<small>Lv.{lvOf(p.score)+1} {LV[lvOf(p.score)][1]}</small></div><div className="sc">{p.score||0}</div></div>)}</div>}
+
+function Login({flash}){
+  const [a,setA]=useState(""),[p,setP]=useState(""),[b,setB]=useState(false);
+  const go=async()=>{setB(true);try{await firebase.auth().signInWithEmailAndPassword(a.includes("@")?a.trim():a.trim()+"@vocab.app",p)}catch(e){flash("帳號或密碼錯誤，請再試一次");setB(false)}};
+  return <div className="setup"><div style={{fontSize:56}}>🐾</div><h1>Vocab 單字王</h1><p>請輸入老師給你的帳號和密碼</p>
+  <input type="text" autoCapitalize="none" value={a} onChange={e=>setA(e.target.value)} placeholder="帳號（例如 1401）"/>
+  <input type="password" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&a&&p)go()}} placeholder="密碼"/>
+  <button className="btn big" disabled={!a||!p||b} onClick={go}>{b?"登入中…":"登入"}</button></div>}
+
+function Teach({words,save,flash,players}){
+  const [txt,setTxt]=useState(""),[title,setTitle]=useState(""),[ds,setDs]=useState(""),[found,setFound]=useState([]),[bad,setBad]=useState(""),[clr,setClr]=useState(false),[acc,setAcc]=useState([]),[busy,setBusy]=useState("");
+  const parse=()=>{try{const m=txt.match(/\[[\s\S]*\]/);const a=JSON.parse(m?m[0]:txt);const ok=a.filter(w=>w&&w.en&&w.zh).map(w=>({en:String(w.en).trim(),kk:w.kk||"",zh:w.zh,pos:w.pos||"",ex:w.ex||"",exzh:w.exzh||""}));if(!ok.length)throw 0;setFound(ok);setBad("")}catch(e){setBad("格式不對，請貼上 Claude 提供的完整單字資料（以 [ 開頭、以 ] 結尾）")}};
+  const merge=()=>{const m=new Map(words.map(w=>[norm(w.en),w]));found.forEach(w=>m.set(norm(w.en),{...w,set:title.trim()}));save([...m.values()]);setFound([]);setTxt("");setTitle("")};
+  const make=async()=>{setBusy("建立中…");const sec=firebase.apps.find(a=>a.name==="sec")||firebase.initializeApp(CFG,"sec");const out=[];
+    for(let n=1;n<=34;n++){const q=String(n).padStart(2,"0"),id="14"+q,pw=String(Math.floor(100000+Math.random()*900000));
+      try{await sec.auth().createUserWithEmailAndPassword(id+"@vocab.app",pw);out.push({q,id,pw})}catch(e){out.push({q,id,pw:e.code==="auth/email-already-in-use"?"（已建立過）":"失敗："+(e.code||"")})}
+      try{await sec.auth().signOut()}catch(e){}
+      setBusy(`建立中 ${n}/34`);await new Promise(r=>setTimeout(r,250))}
+    setAcc(out);setBusy("")};
+  const st=players.filter(p=>p.seat).sort((a,b)=>a.seat.localeCompare(b.seat));
+  return <div>
+  <div className="box noprint"><b>匯入單字</b><p className="note">把 Claude 辨識教材圖片後給你的單字資料整段貼在這裡。</p>
+    <input type="text" value={title} onChange={e=>setTitle(e.target.value)} placeholder="這份單字的標題，例如：英雜12月"/>
+    <textarea value={txt} onChange={e=>setTxt(e.target.value)} placeholder='[{"en":"apple","kk":"[ˈæpl]","zh":"蘋果","ex":"...","exzh":"..."}]'/>
+    <div className="row"><button className="btn" disabled={!txt.trim()} onClick={parse}>檢查格式</button></div>
+    {bad&&<div className="warn">{bad}</div>}
+    {found.length>0&&<div><b>可匯入 {found.length} 個</b><div>{found.map((w,i)=><span className="tag" key={i}>{w.en}<small>{w.zh}</small><button onClick={()=>setFound(found.filter((_,j)=>j!==i))}>×</button></span>)}</div>
+    <div className="row"><button className="btn" disabled={!title.trim()} onClick={merge}>✅ 加入單字庫{!title.trim()?"（請先填標題）":""}</button></div></div>}</div>
+  <div className="box noprint"><b>目前單字庫（{words.length}）</b>
+    {words.length===0?<p className="note">尚無單字。</p>:[...new Set(words.map(w=>w.set||"未分類"))].map(t=><div key={t} style={{marginTop:10}}><b>📚 {t}</b> <small className="note">（{words.filter(w=>(w.set||"未分類")===t).length}）</small> {ds===t?<button className="btn sm" onClick={()=>{save(words.filter(w=>(w.set||"未分類")!==t));setDs("")}}>確認刪除整份</button>:<button className="btn ghost sm" onClick={()=>setDs(t)}>刪除整份</button>}<div>{words.filter(w=>(w.set||"未分類")===t).map(w=><span className="tag" key={w.en}>{w.en}<small>{w.zh}</small><button onClick={()=>save(words.filter(x=>x!==w))}>×</button></span>)}</div></div>)}
+    {words.length>0&&<div className="row"><button className="btn ghost sm" onClick={()=>{if(clr){save([]);setClr(false)}else setClr(true)}}>{clr?"再按一次確認清空":"清空單字庫"}</button></div>}</div>
+  <div className="box"><b>學生帳號（1401–1434）</b><p className="note noprint">按下後一次建立全班帳號與隨機密碼。密碼只會在這裡顯示一次，請立刻列印或截圖保存。已建立過的帳號不會被改動。</p>
+    <div className="row noprint"><button className="btn" disabled={!!busy} onClick={make}>{busy||"建立全班帳號"}</button>{acc.length>0&&<button className="btn ghost" onClick={()=>window.print()}>🖨️ 列印</button>}</div>
+    {acc.length>0&&<table className="tbl"><thead><tr><th>座號</th><th>帳號</th><th>密碼</th></tr></thead><tbody>{acc.map(a=><tr key={a.id}><td>{a.q}</td><td>{a.id}</td><td>{a.pw}</td></tr>)}</tbody></table>}</div>
+  <div className="box noprint"><b>學生學習狀況</b>{st.length===0?<p className="note">還沒有學生開始使用。</p>:<table className="tbl"><thead><tr><th>座號</th><th>名稱</th><th>積分</th><th>測驗次數</th></tr></thead><tbody>{st.map(p=><tr key={p.id}><td>{p.seat}</td><td>{p.animal} {p.name}</td><td>{p.score||0}</td><td>{p.quizzes||0}</td></tr>)}</tbody></table>}</div></div>}
+
+function App(){
+  const [u,setU]=useState(undefined),[me,setMe]=useState(null),[ml,setMl]=useState(false),[words,setWords]=useState([]),[players,setPlayers]=useState([]);
+  const [tab,setTab]=useState("card"),[res,setRes]=useState(null),[help,setHelp]=useState(false),[edit,setEdit]=useState(false),[toast,setToast]=useState(""),[auto,setAuto]=useState(null),[sel,setSel]=useState("*");
+  const teacher=!!u&&u.email===TEACHER;
+  const flash=m=>{setToast(m);setTimeout(()=>setToast(""),2800)};
+  useEffect(()=>firebase.auth().onAuthStateChanged(x=>{setU(x||null);setMl(false);setMe(null);setTab("card")}),[]);
+  useEffect(()=>{if(!u)return;const db=firebase.firestore(),un=[],er=e=>flash("讀取失敗："+(e.code||""));
+    if(teacher){setMe({name:"老師",animal:"🧑‍🏫",score:0});setMl(true)}else un.push(db.collection("players").doc(u.uid).onSnapshot(x=>{setMe(x.exists?x.data():null);setMl(true)},er));
+    un.push(db.collection("vocab").doc("list").onSnapshot(x=>setWords(x.exists?(x.data().items||[]):[]),er));
+    un.push(db.collection("players").orderBy("score","desc").limit(100).onSnapshot(q=>setPlayers(q.docs.map(d=>({id:d.id,...d.data()}))),er));
+    return()=>un.forEach(f=>f())},[u&&u.uid]);
+  const wr=async fn=>{try{await fn()}catch(e){flash("儲存失敗："+(e.code||"請稍後再試"))}};
+  const pdoc=()=>firebase.firestore().collection("players").doc(u.uid);
+  const saveMe=p=>wr(async()=>{await pdoc().set({score:0,...(me||{}),...p,seat:u.email.split("@")[0].slice(2)});setEdit(false)});
+  const saveWords=items=>wr(async()=>{await firebase.firestore().collection("vocab").doc("list").set({items});flash("已更新單字庫")});
+  const done=r=>{setRes(r);setTab("result");if(!teacher){const ws=new Set(me.wrong||[]);r.all.forEach(x=>x.ok?ws.delete(x.w.en):ws.add(x.w.en));wr(()=>pdoc().set({...me,score:(me.score||0)+r.gain,quizzes:(me.quizzes||0)+1,wrong:[...ws],updated:Date.now()}))}};
+  const L=lvOf(me?me.score:0);
+  const wrongList=((me&&me.wrong)||[]).map(e=>words.find(w=>w.en===e)).filter(Boolean);
+  const sets=[...new Set(words.map(w=>w.set||"未分類"))];
+  const sv=sel==="__wrong"?(wrongList.length?sel:"*"):(sel==="*"||sets.includes(sel)?sel:"*");
+  const scoped=sv==="*"?words:sv==="__wrong"?wrongList:words.filter(w=>(w.set||"未分類")===sv);
+  const picker=<ScopeSel sets={sets} sel={sv} setSel={setSel} wn={wrongList.length}/>;
+  const tabs=[["card","🃏","單字卡"],["quiz","📝","測驗"],["wrong","📕","錯題區"],["result","📊","結果"],["board","🏆","排行榜"],...(teacher?[["teach","👩‍🏫","教師"]]:[])];
+  let body;
+  if(u===undefined||(u&&!ml))body=<div className="empty" style={{paddingTop:120}}><div className="big">🐣</div><b>載入中…</b></div>;
+  else if(!u)body=<Login flash={flash}/>;
+  else if(!me||edit)body=<Setup init={me} onSave={saveMe} onCancel={me?()=>setEdit(false):null}/>;
+  else body=<div className="app">
+    <header><div className="who"><button style={{border:0,background:"none",padding:0,cursor:"pointer"}} onClick={()=>!teacher&&setEdit(true)} aria-label="編輯帳號"><Av a={me.animal} score={me.score} size={50}/></button>
+      <div><b>{me.name}</b><div className="lv">Lv.{L+1} {LV[L][1]}</div><button className="chip" onClick={()=>setHelp(true)}>稱號說明</button></div></div>
+      <div style={{textAlign:"right"}}><span className="pts">⭐ {me.score||0}</span><div><button className="chip" onClick={()=>firebase.auth().signOut()}>登出</button></div></div></header>
+    {tab==="card"&&<Cards words={scoped} picker={picker} teacher={teacher} goTeach={()=>setTab("teach")}/>}
+    {tab==="quiz"&&<Quiz key={auto?auto.t:0} words={words} scoped={scoped} picker={picker} auto={auto&&auto.m} onDone={r=>{setAuto(null);done(r)}}/>}
+    {tab==="wrong"&&<Wrong list={wrongList} go={t=>{setSel("__wrong");setTab(t)}}/>}
+    {tab==="result"&&<Result r={res} retry={()=>{setAuto({m:res.mode,t:Date.now()});setTab("quiz")}} goCard={()=>setTab("card")}/>}
+    {tab==="board"&&<Board players={players.filter(p=>p.seat)} meId={u.uid}/>}
+    {tab==="teach"&&teacher&&<Teach words={words} save={saveWords} flash={flash} players={players}/>}
+    <nav><div>{tabs.map(([k,e,n])=><button key={k} className={tab===k?"on":""} onClick={()=>setTab(k)}><span>{e}</span>{n}</button>)}</div></nav>
+    {help&&<div className="mask" onClick={()=>setHelp(false)}><div className="modal" onClick={e=>e.stopPropagation()}><h3 style={{marginTop:0}}>稱號說明</h3>
+      {LV.map((l,i)=><div className="wr" key={i} style={i===L?{background:"var(--pk2)",borderRadius:12,padding:"9px 8px"}:null}><span>{l[2]} Lv.{i+1} {l[1]}</span><span className="note">{l[3]}</span></div>)}
+      <p className="note">答對一題 +2 分（填空題 +3 分），十題全對再 +5 分，答錯不扣分。</p><button className="btn big" onClick={()=>setHelp(false)}>知道了</button></div></div>}</div>;
+  return <div>{body}{toast&&<div className="toast">{toast}</div>}</div>}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script></body></html>
