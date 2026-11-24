@@ -126,7 +126,7 @@ function Quiz({words,scoped,picker,onDone,auto}){
   if(!mode)return <div><h2 style={{textAlign:"center"}}>選一種測驗吧！</h2>{picker}<div className="modes">
     <button className="mode" onClick={()=>start("en2zh")}><b>🇬🇧 英選中</b><span>看英文，從四個選項選出中文意思</span></button>
     <button className="mode" onClick={()=>start("zh2en")}><b>🇹🇼 中選英</b><span>看中文，從四個選項選出英文單字</span></button>
-    <button className="mode" onClick={()=>start("fill")}><b>✏️ 填空</b><span>給中文與頭尾字母，填入中間的字母（答對每題 +3 分）</span></button></div>
+    <button className="mode" onClick={()=>start("fill")}><b>✏️ 填空</b><span>給中文與頭尾字母，輸入完整單字（答對每題 +3 分）</span></button></div>
     <p className="note" style={{textAlign:"center"}}>每回 10 題。英選中、中選英答對 +2 分，填空答對 +3 分，十題全對再 +5 分，答錯不扣分</p></div>;
   const q=qs[k],w=q.w;
   const reveal=(ok,ans)=>{setRes({ok,ans});speak(w.en)};
@@ -139,8 +139,8 @@ function Quiz({words,scoped,picker,onDone,auto}){
   {mode!=="en2zh"&&<div className="q" style={{fontSize:30}}>{w.zh}</div>}
   {mode==="fill"?<div>
     <div className="hint">{w.en[0]}{[...mid].map((c,i)=>c===" "?" ":"＿")}{w.en.slice(-1)}</div>
-    {!res&&<div><input type="text" autoCapitalize="none" autoComplete="off" value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&txt.trim())reveal(norm(txt)===norm(mid),w.en)}} placeholder="填入中間的字母"/>
-    <button className="btn big" disabled={!txt.trim()} onClick={()=>reveal(norm(txt)===norm(mid),w.en)}>確認答案</button></div>}
+    {!res&&<div><input type="text" autoCapitalize="none" autoComplete="off" value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&txt.trim())reveal(norm(txt)===norm(w.en),w.en)}} placeholder="輸入完整單字"/>
+    <button className="btn big" disabled={!txt.trim()} onClick={()=>reveal(norm(txt)===norm(w.en),w.en)}>確認答案</button></div>}
   </div>:<div style={{marginTop:14}}>{q.opts.map(o=>{const t=mode==="en2zh"?o.zh:o.en;const good=o.en===w.en;const chosen=res&&res.ans===o.en;
     return <button key={o.en} className={"opt"+(res&&good?" ok":"")+(chosen&&!good?" no":"")} disabled={!!res} onClick={()=>reveal(good,o.en)}>{t}</button>})}</div>}
   {res&&<div><div className={"fb "+(res.ok?"ok":"no")}>{res.ok?`✅ 答對了！+${mode==="fill"?3:2} 分`:<span>❌ 答錯了，正確答案：{mode==="en2zh"?w.zh:w.en}{mode==="fill"&&<span>（{w.en}）</span>}</span>}</div>
@@ -167,7 +167,7 @@ function Login({flash}){
   <button className="btn big" disabled={!a||!p||b} onClick={go}>{b?"登入中…":"登入"}</button></div>}
 
 function Teach({words,save,flash,players}){
-  const [txt,setTxt]=useState(""),[title,setTitle]=useState(""),[ds,setDs]=useState(""),[found,setFound]=useState([]),[bad,setBad]=useState(""),[clr,setClr]=useState(false),[acc,setAcc]=useState([]),[busy,setBusy]=useState("");
+  const [txt,setTxt]=useState(""),[title,setTitle]=useState(""),[rc,setRc]=useState(false),[ds,setDs]=useState(""),[found,setFound]=useState([]),[bad,setBad]=useState(""),[clr,setClr]=useState(false),[acc,setAcc]=useState([]),[busy,setBusy]=useState("");
   const parse=()=>{try{const m=txt.match(/\[[\s\S]*\]/);const a=JSON.parse(m?m[0]:txt);const ok=a.filter(w=>w&&w.en&&w.zh).map(w=>({en:String(w.en).trim(),kk:w.kk||"",zh:w.zh,pos:w.pos||"",ex:w.ex||"",exzh:w.exzh||""}));if(!ok.length)throw 0;setFound(ok);setBad("")}catch(e){setBad("格式不對，請貼上 Claude 提供的完整單字資料（以 [ 開頭、以 ] 結尾）")}};
   const merge=()=>{const m=new Map(words.map(w=>[norm(w.en),w]));found.forEach(w=>m.set(norm(w.en),{...w,set:title.trim()}));save([...m.values()]);setFound([]);setTxt("");setTitle("")};
   const make=async()=>{setBusy("建立中…");const sec=firebase.apps.find(a=>a.name==="sec")||firebase.initializeApp(CFG,"sec");const out=[];
@@ -177,6 +177,9 @@ function Teach({words,save,flash,players}){
       setBusy(`建立中 ${n}/34`);await new Promise(r=>setTimeout(r,250))}
     setAcc(out);setBusy("")};
   const st=players.filter(p=>p.seat).sort((a,b)=>a.seat.localeCompare(b.seat));
+  const reset=async()=>{try{const db=firebase.firestore(),b=db.batch();st.forEach(p=>b.update(db.collection("players").doc(p.id),{score:0}));await b.commit();setRc(false);flash("已將全班積分歸零")}catch(e){flash("歸零失敗："+(e.code||""))}};
+  const one=async p=>{try{await firebase.firestore().collection("players").doc(p.id).update({score:0});flash(p.seat+" 號已歸零")}catch(e){flash("歸零失敗："+(e.code||""))}};
+  const csv=()=>{const q=x=>'"'+String(x).replace(/"/g,'""')+'"';const t="座號,名稱,積分,測驗次數\n"+st.map(p=>[p.seat,q(p.name),p.score||0,p.quizzes||0].join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+t],{type:"text/csv"}));a.download="積分_"+new Date().toISOString().slice(0,10)+".csv";a.click()};
   return <div>
   <div className="box noprint"><b>匯入單字</b><p className="note">把 Claude 辨識教材圖片後給你的單字資料整段貼在這裡。</p>
     <input type="text" value={title} onChange={e=>setTitle(e.target.value)} placeholder="這份單字的標題，例如：英雜12月"/>
@@ -191,7 +194,7 @@ function Teach({words,save,flash,players}){
   <div className="box"><b>學生帳號（1401–1434）</b><p className="note noprint">按下後一次建立全班帳號與隨機密碼。密碼只會在這裡顯示一次，請立刻列印或截圖保存。已建立過的帳號不會被改動。</p>
     <div className="row noprint"><button className="btn" disabled={!!busy} onClick={make}>{busy||"建立全班帳號"}</button>{acc.length>0&&<button className="btn ghost" onClick={()=>window.print()}>🖨️ 列印</button>}</div>
     {acc.length>0&&<table className="tbl"><thead><tr><th>座號</th><th>帳號</th><th>密碼</th></tr></thead><tbody>{acc.map(a=><tr key={a.id}><td>{a.q}</td><td>{a.id}</td><td>{a.pw}</td></tr>)}</tbody></table>}</div>
-  <div className="box noprint"><b>學生學習狀況</b>{st.length===0?<p className="note">還沒有學生開始使用。</p>:<table className="tbl"><thead><tr><th>座號</th><th>名稱</th><th>積分</th><th>測驗次數</th></tr></thead><tbody>{st.map(p=><tr key={p.id}><td>{p.seat}</td><td>{p.animal} {p.name}</td><td>{p.score||0}</td><td>{p.quizzes||0}</td></tr>)}</tbody></table>}</div></div>}
+  <div className="box noprint"><b>學生學習狀況</b>{st.length>0&&<div className="row"><button className="btn ghost sm" onClick={csv}>⬇️ 下載積分 CSV</button><button className="btn sm" onClick={()=>rc?reset():setRc(true)}>{rc?"確認：全班積分歸零":"全班積分歸零"}</button>{rc&&<button className="btn ghost sm" onClick={()=>setRc(false)}>取消</button>}</div>}{st.length===0?<p className="note">還沒有學生開始使用。</p>:<table className="tbl"><thead><tr><th>座號</th><th>名稱</th><th>積分</th><th>測驗次數</th><th></th></tr></thead><tbody>{st.map(p=><tr key={p.id}><td>{p.seat}</td><td>{p.animal} {p.name}</td><td>{p.score||0}</td><td>{p.quizzes||0}</td><td><button className="btn ghost sm" onClick={()=>one(p)}>歸零</button></td></tr>)}</tbody></table>}</div></div>}
 
 function App(){
   const [u,setU]=useState(undefined),[me,setMe]=useState(null),[ml,setMl]=useState(false),[words,setWords]=useState([]),[players,setPlayers]=useState([]);
