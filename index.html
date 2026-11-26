@@ -58,6 +58,8 @@ nav button span{display:block;font-size:22px}nav button.on{color:var(--pk);font-
 .tbl{width:100%;border-collapse:collapse;font-size:14px}.tbl td,.tbl th{border-bottom:2px dashed var(--ln);padding:5px 6px;text-align:left}textarea{width:100%;min-height:130px;border:3px solid var(--ln);border-radius:16px;background:var(--card);color:var(--ink);font:inherit;font-size:14px;padding:10px}@media print{header,nav,.noprint{display:none!important}}
 .pos{display:inline-block;background:var(--pk2);color:var(--pk);border-radius:10px;padding:0 8px;margin-right:8px;font-size:16px;font-weight:900}
 select{border:3px solid var(--ln);background:var(--card);color:var(--ink);border-radius:14px;padding:8px 10px;font:inherit;max-width:100%}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}.cb{border:2px solid var(--ln);background:var(--card);color:var(--ink);border-radius:99px;padding:5px 12px;font:inherit;font-size:14px;cursor:pointer}.cb.on{background:var(--pk2);border-color:var(--pk);color:var(--pk);font-weight:900}.hd{border-bottom:2px dashed var(--ln);padding:8px 0}.hd:last-child{border:0}.dayh{display:flex;justify-content:space-between;font-weight:900;margin-top:10px}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;text-align:center;gap:6px}.vs b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vs .sc{font-size:28px;font-weight:900;color:var(--pk)}.code{font-size:56px;font-weight:900;letter-spacing:10px;color:var(--pk);text-align:center}
 </style></head>
 <body><div id="root"></div>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -99,6 +101,108 @@ function Setup({init,onSave,onCancel}){
   <p className="note">帳號會綁定你目前登入的帳號（Google 信箱）與這台裝置；換手機或電腦時，用同一個帳號登入即可。</p></div>}
 
 function ScopeSel({sets,sel,setSel,wn}){return <div className="box" style={{padding:"10px 14px"}}><label>📚 單字範圍　<select value={sel} onChange={e=>setSel(e.target.value)}><option value="*">全部</option>{sets.map(t=><option key={t} value={t}>{t}</option>)}{wn>0&&<option value="__wrong">📕 錯題區（{wn}）</option>}</select></label></div>}
+function MultiScope({sets,sel,setSel,wn,total}){
+  const tog=t=>setSel(sel.includes(t)?sel.filter(x=>x!==t):[...sel,t]);
+  return <div className="box" style={{padding:"10px 14px"}}><b>📚 測驗範圍（可複選）</b>
+    <div className="chips"><button className={"cb"+(sel.length===0?" on":"")} onClick={()=>setSel([])}>{sel.length===0?"✓ ":""}全部</button>
+    {sets.map(t=><button key={t} className={"cb"+(sel.includes(t)?" on":"")} onClick={()=>tog(t)}>{sel.includes(t)?"✓ ":""}{t}</button>)}
+    {wn>0&&<button className={"cb"+(sel.includes("__wrong")?" on":"")} onClick={()=>tog("__wrong")}>{sel.includes("__wrong")?"✓ ":""}📕 錯題區（{wn}）</button>}</div>
+    <p className="note" style={{margin:"8px 0 0"}}>目前範圍共 {total} 個單字</p></div>}
+const ms=t=>t&&t.toMillis?t.toMillis():0;
+const BQ=10,BSEC=15;
+function mkQs(pool,all){
+  const base=shuffle(uniq(pool)),list=[];while(list.length<BQ)list.push(...shuffle(base));
+  const A=uniq(all);
+  return list.slice(0,BQ).map(w=>{const m=Math.random()<.5?"en2zh":"zh2en";
+    const opts=shuffle([w,...shuffle(A.filter(x=>x.en!==w.en&&x.zh!==w.zh)).slice(0,3)]);
+    return {m,w:{en:w.en,kk:w.kk||"",zh:w.zh,pos:w.pos||""},opts:opts.map(o=>({en:o.en,zh:o.zh})),a:opts.findIndex(o=>o.en===w.en)}})}
+function tally(room,upto){
+  let h=0,g=0,hc=0,gc=0;const rows=[];
+  room.questions.forEach((q,i)=>{if(i>=upto)return;
+    const a=(room.answers||{})["q"+i]||{},ho=!!a.h&&a.h.c===q.a,go=!!a.g&&a.g.c===q.a;
+    let hs=ho?10:0,gs=go?10:0,first="";
+    if(ho||go){const ht=ho?ms(a.h.at):1e15,gt=go?ms(a.g.at):1e15;if(ht<gt){hs+=5;first="h"}else if(gt<ht){gs+=5;first="g"}}
+    h+=hs;g+=gs;if(ho)hc++;if(go)gc++;rows.push({ho,go,hs,gs,first})});
+  return {h,g,hc,gc,rows}}
+function Battle({me,uid,isT,words,qScoped,qpicker,bcode,setBcode,onFinish,onExit,flash}){
+  const db=firebase.firestore();
+  const [room,setRoom]=useState(null),[jc,setJc]=useState(""),[busy,setBusy]=useState(false),[leave,setLeave]=useState(false),[,setTick]=useState(0);
+  const sr=useRef({cur:-1,t0:0,closedAt:0,advCur:-1,advAt:0}),lastRef=useRef(null);
+  useEffect(()=>{lastRef.current=null;sr.current={cur:-1,t0:0,closedAt:0,advCur:-1,advAt:0};setRoom(null);if(!bcode)return;
+    return db.collection("rooms").doc(bcode).onSnapshot(x=>{const d=x.exists?x.data({serverTimestamps:"estimate"}):false;if(d)lastRef.current=d;
+      setRoom(d||(lastRef.current&&lastRef.current.status==="done"?lastRef.current:false))},e=>flash("連線失敗："+(e.code||"")))},[bcode]);
+  const isHost=!!room&&room.host.uid===uid,side=isHost?"h":"g";
+  const opp=room?(isHost?room.guest:room.host):null;
+  // clock + auto advance
+  useEffect(()=>{if(!room||room.status!=="playing")return;
+    const id=setInterval(()=>{const S=sr.current,n=Date.now();
+      if(S.cur!==room.cur){S.cur=room.cur;S.t0=n;S.closedAt=0}
+      const a=(room.answers||{})["q"+room.cur]||{};
+      const closed=(a.h&&a.g)||(n-S.t0>=BSEC*1000);
+      if(closed&&!S.closedAt)S.closedAt=n;
+      if(S.closedAt&&n-S.closedAt>=(isHost?2200:5500)&&!(S.advCur===room.cur&&n-S.advAt<3000)){
+        S.advCur=room.cur;S.advAt=n;
+        db.collection("rooms").doc(bcode).update(room.cur>=room.questions.length-1?{status:"done"}:{cur:room.cur+1}).catch(()=>{})}
+      setTick(n)},250);
+    return()=>clearInterval(id)},[room]);
+  // score once when the match is finished
+  useEffect(()=>{if(!room||room.status!=="done"||!me||isT||!opp)return;
+    const rid=bcode+"-"+room.createdAt;if(me.battle&&me.battle.last&&me.battle.last.id===rid)return;
+    const T=tally(room,BQ),mine=isHost?T.h:T.g,theirs=isHost?T.g:T.h,rights=[],wrongs=[];
+    room.questions.forEach((q,i)=>{(isHost?T.rows[i].ho:T.rows[i].go)?rights.push(q.w.en):wrongs.push(q.w.en)});
+    onFinish({id:rid,res:mine>theirs?"win":mine<theirs?"lose":"draw",opp:opp.uid,oppName:opp.name,correct:isHost?T.hc:T.gc,rights,wrongs})},[room&&room.status]);
+  const create=async()=>{if(words.length<4){flash("單字至少要 4 個");return}setBusy(true);
+    try{const col=db.collection("rooms");
+      col.where("createdAt","<",Date.now()-7200000).limit(20).get().then(q=>q.docs.forEach(d=>d.ref.delete().catch(()=>{}))).catch(()=>{});
+      let code=null;
+      for(let k=0;k<8&&!code;k++){const c=String(Math.floor(1000+Math.random()*9000)),r=col.doc(c),x=await r.get();
+        if(!x.exists)code=c;else if(Date.now()-(x.data().createdAt||0)>7200000){await r.delete();code=c}}
+      if(!code)throw "目前房間太多，請稍後再試";
+      await col.doc(code).set({code,createdAt:Date.now(),host:{uid,name:me.name,animal:me.animal,score:me.score||0},guest:null,status:"waiting",questions:mkQs(qScoped.length?qScoped:words,words),cur:0,answers:{}});
+      setBcode(code)}catch(e){flash(typeof e==="string"?e:"建立失敗："+(e.code||""))}setBusy(false)};
+  const join=async()=>{const code=jc.trim();if(!/^\d{4}$/.test(code)){flash("請輸入 4 位數房號");return}setBusy(true);
+    try{const r=db.collection("rooms").doc(code);
+      await db.runTransaction(async t=>{const x=await t.get(r);if(!x.exists)throw "找不到這個房號";const d=x.data();
+        if(d.host.uid===uid)throw "不能加入自己建立的房間";if(d.status!=="waiting"||d.guest)throw "這個房間已經開始或已額滿";
+        t.update(r,{guest:{uid,name:me.name,animal:me.animal,score:me.score||0},status:"playing"})});
+      setBcode(code)}catch(e){flash(typeof e==="string"?e:"加入失敗："+(e.code||""))}setBusy(false)};
+  const quit=async()=>{try{if(room&&isHost&&room.status==="waiting")await db.collection("rooms").doc(bcode).delete()}catch(e){}setLeave(false);setBcode(null)};
+  const pick=i=>{db.collection("rooms").doc(bcode).update({["answers.q"+room.cur+"."+side]:{c:i,at:firebase.firestore.FieldValue.serverTimestamp()}}).catch(e=>flash("送出失敗："+(e.code||"")))};
+
+  if(!bcode)return <div>
+    <div className="row" style={{justifyContent:"flex-start",margin:"0 0 6px"}}><button className="btn ghost sm" style={{flex:"none",minWidth:0}} onClick={onExit}>← 回測驗</button></div>
+    <h2 style={{textAlign:"center",margin:"4px 0 10px"}}>⚔️ 雙人對戰</h2>
+    {qpicker}
+    <div className="box"><b>🏠 建立房間</b><p className="note">用上面選的範圍出 10 題。建立後會得到一組房號，告訴同學就能加入。</p>
+      <button className="btn big" disabled={busy||words.length<4} onClick={create}>{busy?"處理中…":"建立房間"}</button></div>
+    <div className="box"><b>🚪 加入房間</b><input type="text" inputMode="numeric" maxLength={4} value={jc} onChange={e=>setJc(e.target.value.replace(/\D/g,""))} onKeyDown={e=>{if(e.key==="Enter")join()}} placeholder="輸入同學給你的 4 位數房號"/>
+      <button className="btn big" disabled={busy||jc.length!==4} onClick={join}>{busy?"處理中…":"加入對戰"}</button></div>
+    <div className="box"><b>📖 對戰規則</b><p className="note" style={{lineHeight:1.8}}>兩人同時作答相同的 10 題，每題限時 15 秒。<br/>答對 +10 分，最先答對的人再 +5 分。<br/>結束後比總分：勝 +5、平手 +3、敗 +1 個積分。<br/>為避免互刷：每人每天最多 5 場計分，和同一位同學每天最多 2 場計分。</p></div></div>;
+  if(room===null)return <div className="empty"><div className="big">🐣</div><b>連線中…</b></div>;
+  if(room===false)return <Empty icon="🚪" t="房間已不存在" s="房間可能被建立者取消，或已過期"><button className="btn" onClick={()=>setBcode(null)}>回到對戰首頁</button></Empty>;
+  if(room.status==="waiting")return <div><div className="box" style={{textAlign:"center"}}><div className="note">你的房號</div><div className="code">{bcode}</div>
+    <p>請同學到「測驗 → 雙人對戰 → 加入房間」輸入這組房號</p><div className="note">等待對手加入…</div>
+    <div className="row"><button className="btn ghost" onClick={quit}>取消房間</button></div></div></div>;
+  const Hd=({T})=><div className="box vs"><div><Av a={room.host.animal} score={room.host.score||0} size={44}/><b>{room.host.name}{isHost?"（我）":""}</b><div className="sc">{T.h}</div></div><div style={{fontWeight:900}}>VS</div><div><Av a={room.guest.animal} score={room.guest.score||0} size={44}/><b>{room.guest.name}{!isHost?"（我）":""}</b><div className="sc">{T.g}</div></div></div>;
+  if(room.status==="done"){const T=tally(room,BQ),mine=isHost?T.h:T.g,theirs=isHost?T.g:T.h,res=mine>theirs?"win":mine<theirs?"lose":"draw",rid=bcode+"-"+room.createdAt,last=me.battle&&me.battle.last&&me.battle.last.id===rid?me.battle.last:null;
+    const wr=room.questions.filter((q,i)=>!(isHost?T.rows[i].ho:T.rows[i].go));
+    return <div><div className="box" style={{textAlign:"center"}}><div style={{fontSize:64}}>{res==="win"?"🏆":res==="draw"?"🤝":"💪"}</div><b style={{fontSize:22}}>{res==="win"?"你贏了！":res==="draw"?"平手！":"這次輸了，再接再厲！"}</b>
+      <p className="note" style={{margin:"6px 0 0"}}>{isT?"老師帳號不計入積分":last?(last.capped?"今天的對戰計分已達上限，本場不計入積分":`本場獲得 +${last.gain} 個積分`):"計分中…"}</p></div>
+      {Hd({T})}<div className="note" style={{textAlign:"center",marginBottom:10}}>你答對 {isHost?T.hc:T.gc} / {BQ} 題，對手答對 {isHost?T.gc:T.hc} / {BQ} 題</div>
+      <div className="box"><b>你答錯的單字</b>{wr.length===0?<p className="note">全部答對，太強了！</p>:wr.map((q,i)=><div className="wr" key={i}><span><b>{q.w.en}</b> <small className="note">{q.w.kk}</small></span><span>{q.w.zh}</span></div>)}</div>
+      <div className="row"><button className="btn" onClick={()=>setBcode(null)}>⚔️ 再來一場</button><button className="btn ghost" onClick={()=>{setBcode(null);onExit()}}>回測驗</button></div></div>}
+  const q=room.questions[room.cur],S=sr.current,n=Date.now(),remain=Math.max(0,BSEC-(S.t0?(n-S.t0)/1000:0));
+  const a=(room.answers||{})["q"+room.cur]||{},mine=a[side],theirs=a[isHost?"g":"h"],closed=!!(a.h&&a.g)||remain<=0;
+  const T=tally(room,room.cur+(closed?1:0)),row=closed?T.rows[room.cur]:null;
+  return <div>{Hd({T})}
+    <div className="cnt">第 {room.cur+1} / {BQ} 題　⏱ {Math.ceil(remain)} 秒</div>
+    <div className="prog"><div style={{width:(remain/BSEC*100)+"%",background:remain<=5?"var(--rd)":"var(--pk)"}}/></div>
+    <div className="q">{q.m==="en2zh"?q.w.en:q.w.zh}</div>
+    <div style={{marginTop:14}}>{q.opts.map((o,i)=>{let cls="opt";if(mine||closed){if(i===q.a)cls+=" ok";else if(mine&&mine.c===i)cls+=" no"}
+      return <button key={i} className={cls} disabled={!!mine||closed} onClick={()=>pick(i)}>{q.m==="en2zh"?o.zh:o.en}{closed&&theirs&&theirs.c===i?<small className="note">　← 對手選這個</small>:null}</button>})}</div>
+    {!closed&&mine&&<div className="fb ok">已作答，等待對手…</div>}
+    {closed&&<div className={"fb "+((isHost?row.ho:row.go)?"ok":"no")}>{(isHost?row.ho:row.go)?"✅ 你答對了":mine?"❌ 你答錯了":"⏰ 時間到"}　本題你 +{isHost?row.hs:row.gs}{row.first===side?"（含搶答 ⚡+5）":""}　對手 +{isHost?row.gs:row.hs}{theirs?"":"（未作答）"}</div>}
+    <div className="row" style={{justifyContent:"flex-end",margin:"4px 0"}}>{leave?<button className="btn sm" style={{flex:"none",minWidth:0}} onClick={quit}>確認離開（本場作廢）</button>:<button className="btn ghost sm" style={{flex:"none",minWidth:0}} onClick={()=>setLeave(true)}>離開對戰</button>}</div></div>}
 function Wrong({list,go}){
   if(!list.length)return <Empty icon="📕" t="錯題區是空的" s="測驗答錯的單字會自動放在這裡，下次答對就會移除"/>;
   return <div><div className="row"><button className="btn" onClick={()=>go("quiz")}>📝 測驗錯題</button><button className="btn ghost" onClick={()=>go("card")}>🃏 單字卡複習</button></div>
@@ -115,7 +219,7 @@ function Cards({words,teacher,goTeach,picker}){
   <div className="row"><button className="btn" onClick={()=>speak(w.en)}>🔊 單字發音</button><button className="btn" onClick={()=>speak(w.ex)}>🔊 播放例句</button></div>
   <div className="row"><button className="btn ghost" onClick={()=>go(-1)}>◀ 上一個</button><button className="btn ghost" onClick={()=>go(1)}>下一個 ▶</button></div></div>}
 
-function Quiz({words,scoped,picker,onDone,auto}){
+function Quiz({words,scoped,picker,onDone,onBattle,auto}){
   const [mode,setMode]=useState(null),[qs,setQs]=useState([]),[k,setK]=useState(0),[res,setRes]=useState(null),[txt,setTxt]=useState(""),[log,setLog]=useState([]);
   const start=m=>{let pool=m==="fill"?scoped.filter(w=>w.en.length>=3):scoped;if(!pool.length)pool=scoped;pool=uniq(pool);
     const base=shuffle(pool),list=[];for(let i=0;i<10;i++)list.push(base[i%base.length]);
@@ -127,7 +231,8 @@ function Quiz({words,scoped,picker,onDone,auto}){
   if(!mode)return <div><h2 style={{textAlign:"center"}}>選一種測驗吧！</h2>{picker}<div className="modes">
     <button className="mode" onClick={()=>start("en2zh")}><b>🇬🇧 英選中</b><span>看英文，從四個選項選出中文意思</span></button>
     <button className="mode" onClick={()=>start("zh2en")}><b>🇹🇼 中選英</b><span>看中文，從四個選項選出英文單字</span></button>
-    <button className="mode" onClick={()=>start("fill")}><b>✏️ 填空</b><span>給中文與頭尾字母，輸入完整單字（答對每題 +3 分）</span></button></div>
+    <button className="mode" onClick={()=>start("fill")}><b>✏️ 填空</b><span>給中文與頭尾字母，輸入完整單字（答對每題 +3 分）</span></button>
+    <button className="mode" onClick={onBattle} style={{borderColor:"var(--pk)"}}><b>⚔️ 雙人對戰</b><span>和同學用房號連線，同時搶答 10 題比高下</span></button></div>
     <p className="note" style={{textAlign:"center"}}>每回 10 題。英選中、中選英答對 +2 分，填空答對 +3 分，十題全對再 +5 分，答錯不扣分</p></div>;
   const q=qs[k],w=q.w;
   const reveal=(ok,ans)=>{setRes({ok,ans});speak(w.en)};
@@ -147,13 +252,22 @@ function Quiz({words,scoped,picker,onDone,auto}){
   {res&&<div><div className={"fb "+(res.ok?"ok":"no")}>{res.ok?`✅ 答對了！+${mode==="fill"?3:2} 分`:<span>❌ 答錯了，正確答案：{mode==="en2zh"?w.zh:w.en}{mode==="fill"&&<span>（{w.en}）</span>}</span>}</div>
     <button className="btn big" onClick={next}>{k>=9?"看結果 🎉":"下一題 ▶"}</button></div>}</div>}
 
-function Result({r,retry,goCard}){
-  if(!r)return <Empty icon="📊" t="還沒有測驗結果" s="完成一次測驗後，成績會顯示在這裡"/>;
+const MODE={en2zh:"英選中",zh2en:"中選英",fill:"填空",battle:"⚔️對戰"};
+function History({hist}){
+  if(!hist.length)return null;
+  const days=[];[...hist].sort((a,b)=>b.t-a.t).forEach(h=>{const d=new Date(h.t),k=(d.getMonth()+1)+"月"+d.getDate()+"日";let g=days.find(x=>x.k===k&&x.y===d.getFullYear());if(!g){g={k,y:d.getFullYear(),list:[]};days.push(g)}g.list.push(h)});
+  const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")};
+  return <div className="box" style={{marginTop:14}}><b>📅 我的測驗紀錄</b><p className="note" style={{margin:"4px 0 0"}}>共玩了 {hist.length} 次，最高 {Math.max(...hist.map(h=>h.correct))} / 10 題答對</p>
+  {days.map(g=><div key={g.y+g.k}><div className="dayh"><span>{g.k}</span><span className="note">玩了 {g.list.length} 次</span></div>
+    {g.list.map(h=><div className="wr" key={h.t}><span>{hm(h.t)}　{MODE[h.mode]||h.mode}{h.scope?<small className="note">　{h.scope}</small>:null}</span><span><b>{h.correct}</b> / {h.total} 題　<span style={{color:"var(--pk)",fontWeight:900}}>+{h.gain}</span></span></div>)}</div>)}</div>}
+function Result({r,hist,retry,goCard}){
+  if(!r&&!hist.length)return <Empty icon="📊" t="還沒有測驗結果" s="完成一次測驗後，成績會顯示在這裡"/>;
+  if(!r)return <div><History hist={hist}/><div className="row"><button className="btn ghost" onClick={goCard}>🃏 返回單字卡</button></div></div>;
   const pct=Math.round(r.correct/r.total*100);
   return <div><div className="box" style={{textAlign:"center"}}><div style={{fontSize:56}}>{pct===100?"🏆":pct>=60?"🎉":"💪"}</div><b>本回獲得 +{r.gain} 分</b>{r.bonus>0&&<div className="note">含十題全對獎勵 +5 分</div>}</div>
   <div className="stats"><div className="stat"><b>{r.total}</b>總題數</div><div className="stat"><b style={{color:"var(--gn)"}}>{r.correct}</b>答對</div><div className="stat"><b style={{color:"var(--rd)"}}>{r.total-r.correct}</b>答錯</div><div className="stat"><b>{pct}%</b>正確率</div></div>
   <div className="box" style={{marginTop:12}}><b>答錯的單字</b>{r.wrong.length===0?<p className="note">全部答對，太強了！</p>:r.wrong.map((w,i)=><div className="wr" key={i}><span><b>{w.en}</b> <small className="note">{w.kk}</small></span><span>{w.zh}</span></div>)}</div>
-  <p className="note" style={{textAlign:"center"}}>答錯的單字已放進「錯題區」，下次答對就會自動移除。</p><div className="row"><button className="btn" onClick={retry}>🔁 重新測驗</button><button className="btn ghost" onClick={goCard}>🃏 返回單字卡</button></div></div>}
+  <p className="note" style={{textAlign:"center"}}>答錯的單字已放進「錯題區」，下次答對就會自動移除。</p><div className="row"><button className="btn" onClick={retry}>🔁 重新測驗</button><button className="btn ghost" onClick={goCard}>🃏 返回單字卡</button></div><History hist={hist}/></div>}
 
 function Board({players,meId}){
   if(!players.length)return <Empty icon="🏆" t="排行榜還是空的" s="完成測驗拿到分數就會上榜"/>;
@@ -168,7 +282,7 @@ function Login({flash}){
   <button className="btn big" disabled={!a||!p||b} onClick={go}>{b?"登入中…":"登入"}</button></div>}
 
 function Teach({words,save,flash,players}){
-  const [txt,setTxt]=useState(""),[title,setTitle]=useState(""),[rc,setRc]=useState(false),[ds,setDs]=useState(""),[found,setFound]=useState([]),[bad,setBad]=useState(""),[clr,setClr]=useState(false),[acc,setAcc]=useState([]),[busy,setBusy]=useState("");
+  const [txt,setTxt]=useState(""),[title,setTitle]=useState(""),[rc,setRc]=useState(false),[ds,setDs]=useState(""),[openS,setOpenS]=useState({}),[found,setFound]=useState([]),[bad,setBad]=useState(""),[clr,setClr]=useState(false),[acc,setAcc]=useState([]),[busy,setBusy]=useState("");
   const parse=()=>{try{const m=txt.match(/\[[\s\S]*\]/);const a=JSON.parse(m?m[0]:txt);const ok=a.filter(w=>w&&w.en&&w.zh).map(w=>({en:String(w.en).trim(),kk:w.kk||"",zh:w.zh,pos:w.pos||"",ex:w.ex||"",exzh:w.exzh||""}));if(!ok.length)throw 0;setFound(ok);setBad("")}catch(e){setBad("格式不對，請貼上 Claude 提供的完整單字資料（以 [ 開頭、以 ] 結尾）")}};
   const kf=w=>norm(w.set||"")+"|"+norm(w.en);
   const merge=()=>{const t=title.trim(),m=new Map(words.map(w=>[kf(w),w]));found.forEach(w=>m.set(kf({...w,set:t}),{...w,set:t}));save([...m.values()]);setFound([]);setTxt("");setTitle("")};
@@ -191,7 +305,11 @@ function Teach({words,save,flash,players}){
     {found.length>0&&<div><b>可匯入 {found.length} 個</b><div>{found.map((w,i)=><span className="tag" key={i}>{w.en}<small>{w.zh}</small><button onClick={()=>setFound(found.filter((_,j)=>j!==i))}>×</button></span>)}</div>
     <div className="row"><button className="btn" disabled={!title.trim()} onClick={merge}>✅ 加入單字庫{!title.trim()?"（請先填標題）":""}</button></div></div>}</div>
   <div className="box noprint"><b>目前單字庫（{words.length}）</b>
-    {words.length===0?<p className="note">尚無單字。</p>:[...new Set(words.map(w=>w.set||"未分類"))].map(t=><div key={t} style={{marginTop:10}}><b>📚 {t}</b> <small className="note">（{words.filter(w=>(w.set||"未分類")===t).length}）</small> {ds===t?<button className="btn sm" onClick={()=>{save(words.filter(w=>(w.set||"未分類")!==t));setDs("")}}>確認刪除整份</button>:<button className="btn ghost sm" onClick={()=>setDs(t)}>刪除整份</button>}<div>{words.filter(w=>(w.set||"未分類")===t).map(w=><span className="tag" key={w.en}>{w.en}<small>{w.zh}</small><button onClick={()=>save(words.filter(x=>x!==w))}>×</button></span>)}</div></div>)}
+    {words.length===0?<p className="note">尚無單字。</p>:[...new Set(words.map(w=>w.set||"未分類"))].map(t=>{const ws=words.filter(w=>(w.set||"未分類")===t),op=!!openS[t];return <div className="hd" key={t}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+        <button className="cb" onClick={()=>setOpenS({...openS,[t]:!op})}>{op?"▼":"▶"} 📚 {t}（{ws.length}）</button>
+        {ds===t?<button className="btn sm" onClick={()=>{save(words.filter(w=>(w.set||"未分類")!==t));setDs("")}}>確認刪除整份</button>:<button className="btn ghost sm" onClick={()=>setDs(t)}>刪除整份</button>}</div>
+      {op&&<div style={{marginTop:6}}>{ws.map(w=><span className="tag" key={w.en}>{w.en}<small>{w.zh}</small><button onClick={()=>save(words.filter(x=>x!==w))}>×</button></span>)}</div>}</div>})}
     {words.length>0&&<div className="row"><button className="btn ghost sm" onClick={()=>{if(clr){save([]);setClr(false)}else setClr(true)}}>{clr?"再按一次確認清空":"清空單字庫"}</button></div>}</div>
   <div className="box"><b>學生帳號（1401–1434）</b><p className="note noprint">按下後一次建立全班帳號與隨機密碼。密碼只會在這裡顯示一次，請立刻列印或截圖保存。已建立過的帳號不會被改動。</p>
     <div className="row noprint"><button className="btn" disabled={!!busy} onClick={make}>{busy||"建立全班帳號"}</button>{acc.length>0&&<button className="btn ghost" onClick={()=>window.print()}>🖨️ 列印</button>}</div>
@@ -200,7 +318,7 @@ function Teach({words,save,flash,players}){
 
 function App(){
   const [u,setU]=useState(undefined),[me,setMe]=useState(null),[ml,setMl]=useState(false),[words,setWords]=useState([]),[players,setPlayers]=useState([]);
-  const [tab,setTab]=useState("card"),[res,setRes]=useState(null),[help,setHelp]=useState(false),[edit,setEdit]=useState(false),[toast,setToast]=useState(""),[auto,setAuto]=useState(null),[sel,setSel]=useState("*");
+  const [tab,setTab]=useState("card"),[res,setRes]=useState(null),[help,setHelp]=useState(false),[edit,setEdit]=useState(false),[toast,setToast]=useState(""),[auto,setAuto]=useState(null),[sel,setSel]=useState("*"),[qsel,setQsel]=useState([]),[bt,setBt]=useState(false),[bcode,setBcode]=useState(null);
   const teacher=!!u&&u.email===TEACHER;
   const flash=m=>{setToast(m);setTimeout(()=>setToast(""),2800)};
   useEffect(()=>firebase.auth().onAuthStateChanged(x=>{setU(x||null);setMl(false);setMe(null);setTab("card")}),[]);
@@ -213,13 +331,23 @@ function App(){
   const pdoc=()=>firebase.firestore().collection("players").doc(u.uid);
   const saveMe=p=>wr(async()=>{await pdoc().set({score:0,...(me||{}),...p,seat:u.email.split("@")[0].slice(2)});setEdit(false)});
   const saveWords=items=>wr(async()=>{await firebase.firestore().collection("vocab").doc("list").set({items});flash("已更新單字庫")});
-  const done=r=>{setRes(r);setTab("result");if(!teacher){const ws=new Set(me.wrong||[]);r.all.forEach(x=>x.ok?ws.delete(x.w.en):ws.add(x.w.en));wr(()=>pdoc().set({...me,score:(me.score||0)+r.gain,quizzes:(me.quizzes||0)+1,wrong:[...ws],updated:Date.now()}))}};
+  const done=r=>{setRes(r);setTab("result");if(!teacher){const ws=new Set(me.wrong||[]);r.all.forEach(x=>x.ok?ws.delete(x.w.en):ws.add(x.w.en));const sc=qsel.length?qsel.map(x=>x==="__wrong"?"錯題區":x).join("、"):"全部",h=[...(me.history||[]),{t:Date.now(),mode:r.mode,correct:r.correct,total:r.total,gain:r.gain,scope:sc.slice(0,40)}].slice(-200);wr(()=>pdoc().set({...me,score:(me.score||0)+r.gain,quizzes:(me.quizzes||0)+1,wrong:[...ws],history:h,updated:Date.now()}))}};
+  const finishBattle=info=>{if(teacher||!me)return;
+    const d=new Date(),day=d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(),b=me.battle&&me.battle.day===day?me.battle:{day,n:0,pairs:{}},pc=(b.pairs&&b.pairs[info.opp])||0;
+    const capped=b.n>=5||pc>=2,gain=capped?0:(info.res==="win"?5:info.res==="draw"?3:1);
+    const nb={day,n:b.n+(capped?0:1),pairs:{...(b.pairs||{}),[info.opp]:pc+(capped?0:1)},last:{id:info.id,gain,capped}};
+    const ws=new Set(me.wrong||[]);info.rights.forEach(e=>ws.delete(e));info.wrongs.forEach(e=>ws.add(e));
+    const h=[...(me.history||[]),{t:Date.now(),mode:"battle",correct:info.correct,total:10,gain,scope:("對戰 "+info.oppName).slice(0,40)}].slice(-200);
+    wr(()=>pdoc().set({...me,score:(me.score||0)+gain,battle:nb,wrong:[...ws],history:h,updated:Date.now()}))};
   const L=lvOf(me?me.score:0);
   const wrongList=((me&&me.wrong)||[]).map(e=>words.find(w=>w.en===e)).filter(Boolean);
   const sets=[...new Set(words.map(w=>w.set||"未分類"))];
   const sv=sel==="__wrong"?(wrongList.length?sel:"*"):(sel==="*"||sets.includes(sel)?sel:"*");
   const scoped=sv==="*"?uniq(words):sv==="__wrong"?wrongList:words.filter(w=>(w.set||"未分類")===sv);
   const picker=<ScopeSel sets={sets} sel={sv} setSel={setSel} wn={wrongList.length}/>;
+  const qv=qsel.filter(x=>x==="__wrong"?wrongList.length>0:sets.includes(x));
+  const qScoped=qv.length===0?uniq(words):uniq([...qv.includes("__wrong")?wrongList:[],...words.filter(w=>qv.includes(w.set||"未分類"))]);
+  const qpicker=<MultiScope sets={sets} sel={qv} setSel={setQsel} wn={wrongList.length} total={qScoped.length}/>;
   const tabs=[["card","🃏","單字卡"],["quiz","📝","測驗"],["wrong","📕","錯題區"],["result","📊","結果"],["board","🏆","排行榜"],...(teacher?[["teach","👩‍🏫","教師"]]:[])];
   let body;
   if(u===undefined||(u&&!ml))body=<div className="empty" style={{paddingTop:120}}><div className="big">🐣</div><b>載入中…</b></div>;
@@ -230,9 +358,10 @@ function App(){
       <div><b>{me.name}</b><div className="lv">Lv.{L+1} {LV[L][1]}</div><button className="chip" onClick={()=>setHelp(true)}>稱號說明</button></div></div>
       <div style={{textAlign:"right"}}><span className="pts">⭐ {me.score||0}</span><div><button className="chip" onClick={()=>firebase.auth().signOut()}>登出</button></div></div></header>
     {tab==="card"&&<Cards words={scoped} picker={picker} teacher={teacher} goTeach={()=>setTab("teach")}/>}
-    {tab==="quiz"&&<Quiz key={auto?auto.t:0} words={words} scoped={scoped} picker={picker} auto={auto&&auto.m} onDone={r=>{setAuto(null);done(r)}}/>}
-    {tab==="wrong"&&<Wrong list={wrongList} go={t=>{setSel("__wrong");setTab(t)}}/>}
-    {tab==="result"&&<Result r={res} retry={()=>{setAuto({m:res.mode,t:Date.now()});setTab("quiz")}} goCard={()=>setTab("card")}/>}
+    {tab==="quiz"&&(bt?<Battle me={me} uid={u.uid} isT={teacher} words={words} qScoped={qScoped} qpicker={qpicker} bcode={bcode} setBcode={setBcode} onFinish={finishBattle} onExit={()=>{setBt(false)}} flash={flash}/>
+      :<Quiz key={auto?auto.t:0} words={words} scoped={qScoped} picker={qpicker} auto={auto&&auto.m} onBattle={()=>setBt(true)} onDone={r=>{setAuto(null);done(r)}}/>)}
+    {tab==="wrong"&&<Wrong list={wrongList} go={t=>{if(t==="quiz")setQsel(["__wrong"]);else setSel("__wrong");setTab(t)}}/>}
+    {tab==="result"&&<Result r={res} hist={me.history||[]} retry={()=>{setAuto({m:res.mode,t:Date.now()});setTab("quiz")}} goCard={()=>setTab("card")}/>}
     {tab==="board"&&<Board players={players.filter(p=>p.seat)} meId={u.uid}/>}
     {tab==="teach"&&teacher&&<Teach words={words} save={saveWords} flash={flash} players={players}/>}
     <nav><div>{tabs.map(([k,e,n])=><button key={k} className={tab===k?"on":""} onClick={()=>setTab(k)}><span>{e}</span>{n}</button>)}</div></nav>
