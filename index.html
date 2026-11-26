@@ -76,6 +76,7 @@ const LV=[[0,"蛋殼見習生","🥚","100 分以下"],[100,"字母啃食怪","�
 const lvOf=s=>{let k=0;LV.forEach((l,i)=>{if((s||0)>=l[0])k=i});return k};
 const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
 const norm=s=>String(s).toLowerCase().replace(/\s+/g,"");
+const uniq=a=>[...new Map(a.map(w=>[w.en,w])).values()];
 function speak(t){try{const s=window.speechSynthesis;s.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=.9;const vs=s.getVoices().filter(v=>/^en[-_]US/i.test(v.lang));u.voice=vs.find(v=>/Google US|Samantha|Aria|Jenny|Natural|Siri|Ava|Allison/i.test(v.name))||vs[0]||null;s.speak(u)}catch(e){}}
 
 function Av({a,score,size=48}){const k=lvOf(score);return <span className={"av l"+k} style={{width:size,height:size,fontSize:size*.6}}>{a}<i style={{fontSize:size*.36}}>{LV[k][2]}</i></span>}
@@ -116,9 +117,9 @@ function Cards({words,teacher,goTeach,picker}){
 
 function Quiz({words,scoped,picker,onDone,auto}){
   const [mode,setMode]=useState(null),[qs,setQs]=useState([]),[k,setK]=useState(0),[res,setRes]=useState(null),[txt,setTxt]=useState(""),[log,setLog]=useState([]);
-  const start=m=>{let pool=m==="fill"?scoped.filter(w=>w.en.length>=3):scoped;if(!pool.length)pool=scoped;
+  const start=m=>{let pool=m==="fill"?scoped.filter(w=>w.en.length>=3):scoped;if(!pool.length)pool=scoped;pool=uniq(pool);
     const base=shuffle(pool),list=[];for(let i=0;i<10;i++)list.push(base[i%base.length]);
-    setQs(list.map(w=>({w,opts:m==="fill"?null:shuffle([w,...shuffle(words.filter(x=>x.en!==w.en&&x.zh!==w.zh)).slice(0,3)])})));
+    setQs(list.map(w=>({w,opts:m==="fill"?null:shuffle([w,...shuffle(uniq(words).filter(x=>x.en!==w.en&&x.zh!==w.zh)).slice(0,3)])})));
     setMode(m);setK(0);setRes(null);setTxt("");setLog([])};
   useEffect(()=>{if(auto&&words.length>=4&&scoped.length)start(auto)},[]);
   if(words.length<4)return <Empty icon="📝" t="單字還不夠" s={`至少需要 4 個單字才能出題（目前 ${words.length} 個）`}/>;
@@ -169,7 +170,8 @@ function Login({flash}){
 function Teach({words,save,flash,players}){
   const [txt,setTxt]=useState(""),[title,setTitle]=useState(""),[rc,setRc]=useState(false),[ds,setDs]=useState(""),[found,setFound]=useState([]),[bad,setBad]=useState(""),[clr,setClr]=useState(false),[acc,setAcc]=useState([]),[busy,setBusy]=useState("");
   const parse=()=>{try{const m=txt.match(/\[[\s\S]*\]/);const a=JSON.parse(m?m[0]:txt);const ok=a.filter(w=>w&&w.en&&w.zh).map(w=>({en:String(w.en).trim(),kk:w.kk||"",zh:w.zh,pos:w.pos||"",ex:w.ex||"",exzh:w.exzh||""}));if(!ok.length)throw 0;setFound(ok);setBad("")}catch(e){setBad("格式不對，請貼上 Claude 提供的完整單字資料（以 [ 開頭、以 ] 結尾）")}};
-  const merge=()=>{const m=new Map(words.map(w=>[norm(w.en),w]));found.forEach(w=>m.set(norm(w.en),{...w,set:title.trim()}));save([...m.values()]);setFound([]);setTxt("");setTitle("")};
+  const kf=w=>norm(w.set||"")+"|"+norm(w.en);
+  const merge=()=>{const t=title.trim(),m=new Map(words.map(w=>[kf(w),w]));found.forEach(w=>m.set(kf({...w,set:t}),{...w,set:t}));save([...m.values()]);setFound([]);setTxt("");setTitle("")};
   const make=async()=>{setBusy("建立中…");const sec=firebase.apps.find(a=>a.name==="sec")||firebase.initializeApp(CFG,"sec");const out=[];
     for(let n=1;n<=34;n++){const q=String(n).padStart(2,"0"),id="14"+q,pw=String(Math.floor(100000+Math.random()*900000));
       try{await sec.auth().createUserWithEmailAndPassword(id+"@vocab.app",pw);out.push({q,id,pw})}catch(e){out.push({q,id,pw:e.code==="auth/email-already-in-use"?"（已建立過）":"失敗："+(e.code||"")})}
@@ -216,7 +218,7 @@ function App(){
   const wrongList=((me&&me.wrong)||[]).map(e=>words.find(w=>w.en===e)).filter(Boolean);
   const sets=[...new Set(words.map(w=>w.set||"未分類"))];
   const sv=sel==="__wrong"?(wrongList.length?sel:"*"):(sel==="*"||sets.includes(sel)?sel:"*");
-  const scoped=sv==="*"?words:sv==="__wrong"?wrongList:words.filter(w=>(w.set||"未分類")===sv);
+  const scoped=sv==="*"?uniq(words):sv==="__wrong"?wrongList:words.filter(w=>(w.set||"未分類")===sv);
   const picker=<ScopeSel sets={sets} sel={sv} setSel={setSel} wn={wrongList.length}/>;
   const tabs=[["card","🃏","單字卡"],["quiz","📝","測驗"],["wrong","📕","錯題區"],["result","📊","結果"],["board","🏆","排行榜"],...(teacher?[["teach","👩‍🏫","教師"]]:[])];
   let body;
