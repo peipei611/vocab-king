@@ -22,10 +22,10 @@ header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px
 .btn.big{width:100%;padding:14px;font-size:18px}.btn.sm{padding:5px 12px;font-size:13px;box-shadow:none}
 .row{display:flex;gap:10px;justify-content:center;margin:14px 0;flex-wrap:wrap}.row .btn{flex:1;min-width:130px}
 .cnt{text-align:center;color:var(--sub);font-weight:700}
-.card{perspective:1000px;height:330px;margin-top:8px;cursor:pointer}
+.card{perspective:1000px;height:300px;margin-top:8px;cursor:pointer}
 .card .in{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s}
 .card.fl .in{transform:rotateY(180deg)}
-.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--card);border:3px solid var(--ln);border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 18px 36px;text-align:center;box-shadow:0 8px 0 var(--ln)}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;background:var(--card);border:3px solid var(--ln);border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;text-align:center;box-shadow:0 8px 0 var(--ln)}
 .face.back{transform:rotateY(180deg);background:var(--pk2);border-color:var(--pk)}
 .en{font-size:clamp(34px,10vw,50px);font-weight:900;word-break:break-word;line-height:1.15}.kk{color:var(--pk);font-size:20px;margin:6px 0}.zh{font-size:22px;font-weight:700}
 .face small{position:absolute;bottom:12px;color:var(--sub)}.ex{font-size:21px;font-weight:700}.exz{margin-top:12px;color:var(--sub);font-size:17px}
@@ -231,8 +231,8 @@ function Cards({words,teacher,goTeach,picker}){
   const go=d=>{setF(false);setI((k+d+words.length)%words.length)};
   return <div>{picker}<div className="cnt">{k+1} / {words.length}</div>
   <div className={"card"+(f?" fl":"")} onClick={()=>setF(!f)}><div className="in">
-    <div className="face"><div className="en">{w.en}</div><div className="kk">{w.kk}</div>{w.ex&&<div style={{fontSize:19,fontWeight:700,marginTop:10,lineHeight:1.4}}>{w.ex}</div>}<small>點一下卡片看中文</small></div>
-    <div className="face back"><div className="note" style={{marginBottom:6}}>{w.en}</div><div className="zh" style={{fontSize:26}}>{w.pos&&<span className="pos">{w.pos}</span>}{w.zh}</div>{w.exzh&&<div className="exz" style={{fontSize:19,marginTop:14}}>{w.exzh}</div>}<small>再點一下回到正面</small></div></div></div>
+    <div className="face"><div className="en">{w.en}</div><div className="kk">{w.kk}</div><div className="zh">{w.pos&&<span className="pos">{w.pos}</span>}{w.zh}</div><small>點一下卡片看例句</small></div>
+    <div className="face back"><div className="ex">{w.ex}</div><div className="exz">{w.exzh}</div></div></div></div>
   <div className="row"><button className="btn" onClick={()=>speak(w.en)}>🔊 單字發音</button><button className="btn" onClick={()=>speak(w.ex)}>🔊 播放例句</button></div>
   <div className="row"><button className="btn ghost" onClick={()=>go(-1)}>◀ 上一個</button><button className="btn ghost" onClick={()=>go(1)}>下一個 ▶</button></div></div>}
 
@@ -344,7 +344,7 @@ function Login({flash}){
   <button className="btn big" disabled={!a||!p||b} onClick={go}>{b?"登入中…":"登入"}</button></div>}
 
 function Teach({words,save,flash,players,reload}){
-  const [txt,setTxt]=useState(""),[title,setTitle]=useState(""),[rc,setRc]=useState(false),[ds,setDs]=useState(""),[openS,setOpenS]=useState({}),[found,setFound]=useState([]),[bad,setBad]=useState(""),[clr,setClr]=useState(false),[acc,setAcc]=useState([]),[busy,setBusy]=useState("");
+  const [txt,setTxt]=useState(""),[title,setTitle]=useState(""),[rc,setRc]=useState(false),[ds,setDs]=useState(""),[openS,setOpenS]=useState({}),[found,setFound]=useState([]),[bad,setBad]=useState(""),[clr,setClr]=useState(false),[acc,setAcc]=useState([]),[busy,setBusy]=useState(""),[pl,setPl]=useState(""),[pr,setPr]=useState(null),[pOut,setPOut]=useState([]);
   const parse=()=>{try{const m=txt.match(/\[[\s\S]*\]/);const a=JSON.parse(m?m[0]:txt);const ok=a.filter(w=>w&&w.en&&w.zh).map(w=>({en:String(w.en).trim(),kk:w.kk||"",zh:w.zh,pos:w.pos||"",ex:w.ex||"",exzh:w.exzh||""}));if(!ok.length)throw 0;setFound(ok);setBad("")}catch(e){setBad("格式不對，請貼上 Claude 提供的完整單字資料（以 [ 開頭、以 ] 結尾）")}};
   const kf=w=>norm(w.set||"")+"|"+norm(w.en);
   const merge=()=>{const t=title.trim(),m=new Map(words.map(w=>[kf(w),w]));found.forEach(w=>m.set(kf({...w,set:t}),{...w,set:t}));save([...m.values()]);setFound([]);setTxt("");setTitle("")};
@@ -354,6 +354,22 @@ function Teach({words,save,flash,players,reload}){
       try{await sec.auth().signOut()}catch(e){}
       setBusy(`建立中 ${n}/34`);await new Promise(r=>setTimeout(r,250))}
     setAcc(out);setBusy("")};
+  const parsePw=()=>{const ok=[],er=[],seen=new Set();
+    pl.split(/\r?\n/).forEach((ln,i)=>{const t=ln.trim();if(!t)return;const m=t.match(/^(\d{1,4})[\s,，]+(.+)$/);
+      if(!m){er.push("第 "+(i+1)+" 行格式不對（要是「座號 密碼」）");return}
+      let q=m[1];if(q.length===4&&q.startsWith("14"))q=q.slice(2);const n=+q,pw=m[2].trim();
+      if(!(n>=1&&n<=34)){er.push("第 "+(i+1)+" 行座號 "+m[1]+" 不在 1–34 範圍");return}
+      if(pw.length<6){er.push("第 "+(i+1)+" 行（座號 "+n+"）密碼少於 6 個字元");return}
+      if(seen.has(n)){er.push("第 "+(i+1)+" 行座號 "+n+" 重複出現");return}
+      seen.add(n);ok.push({q:String(n).padStart(2,"0"),pw})});
+    const miss=[];for(let n=1;n<=34;n++)if(!seen.has(n))miss.push(String(n).padStart(2,"0"));
+    setPr({ok,er,miss});setPOut([])};
+  const makePw=async()=>{if(!pr||!pr.ok.length||pr.er.length)return;setBusy("建立中…");const sec=firebase.apps.find(a=>a.name==="sec")||firebase.initializeApp(CFG,"sec");const out=[];
+    for(let i=0;i<pr.ok.length;i++){const {q,pw}=pr.ok[i],id="14"+q;
+      try{await sec.auth().createUserWithEmailAndPassword(id+"@vocab.app",pw);out.push({q,id,r:"✅ 已建立"})}catch(e){out.push({q,id,r:e.code==="auth/email-already-in-use"?"⚠️ 帳號已存在，密碼沒有改（請先到 Firebase 刪除該帳號）":"❌ 失敗："+(e.code||"")})}
+      try{await sec.auth().signOut()}catch(e){}
+      setBusy("建立中 "+(i+1)+"/"+pr.ok.length);await new Promise(r=>setTimeout(r,250))}
+    setPOut(out);setBusy("");setPl("");setPr(null)};
   const st=players.filter(p=>p.seat).sort((a,b)=>a.seat.localeCompare(b.seat));
   const reset=async()=>{try{const db=firebase.firestore(),b=db.batch();st.forEach(p=>b.update(db.collection("players").doc(p.id),{score:0}));await b.commit();setRc(false);flash("已將全班積分歸零");reload()}catch(e){flash("歸零失敗："+(e.code||""))}};
   const one=async p=>{try{await firebase.firestore().collection("players").doc(p.id).update({score:0});flash(p.seat+" 號已歸零");reload()}catch(e){flash("歸零失敗："+(e.code||""))}};
@@ -376,6 +392,13 @@ function Teach({words,save,flash,players,reload}){
   <div className="box"><b>學生帳號（1401–1434）</b><p className="note noprint">按下後一次建立全班帳號與隨機密碼。密碼只會在這裡顯示一次，請立刻列印或截圖保存。已建立過的帳號不會被改動。</p>
     <div className="row noprint"><button className="btn" disabled={!!busy} onClick={make}>{busy||"建立全班帳號"}</button>{acc.length>0&&<button className="btn ghost" onClick={()=>window.print()}>🖨️ 列印</button>}</div>
     {acc.length>0&&<table className="tbl"><thead><tr><th>座號</th><th>帳號</th><th>密碼</th></tr></thead><tbody>{acc.map(a=><tr key={a.id}><td>{a.q}</td><td>{a.id}</td><td>{a.pw}</td></tr>)}</tbody></table>}</div>
+  <div className="box noprint"><b>指定密碼建立學生帳號</b><p className="note">每行一位同學，格式「座號 密碼」（中間用空格、逗號或 Tab 隔開，可以直接從 Excel 兩欄複製貼上）。密碼至少 6 個字元。已經存在的帳號不會被改動；若要改密碼，請先到 Firebase 的 Authentication 刪除該帳號再建立。密碼不會被儲存或顯示。</p>
+    <textarea value={pl} onChange={e=>{setPl(e.target.value);setPr(null)}} placeholder={"01 abc123\n02 k9x2pq\n03 …"}/>
+    <div className="row"><button className="btn ghost" disabled={!pl.trim()||!!busy} onClick={parsePw}>檢查格式</button>
+    <button className="btn" disabled={!pr||!pr.ok.length||pr.er.length>0||!!busy} onClick={makePw}>{busy||(pr&&pr.ok.length&&!pr.er.length?"建立 "+pr.ok.length+" 個帳號":"建立帳號")}</button></div>
+    {pr&&pr.er.length>0&&<div className="warn">{pr.er.map((x,i)=><div key={i}>{x}</div>)}</div>}
+    {pr&&pr.er.length===0&&<p className="note">可建立 {pr.ok.length} 個帳號。{pr.miss.length>0?"清單沒有包含的座號："+pr.miss.join("、")+"。":"1–34 號都有了。"}</p>}
+    {pOut.length>0&&<table className="tbl"><thead><tr><th>座號</th><th>帳號</th><th>結果</th></tr></thead><tbody>{pOut.map(a=><tr key={a.id}><td>{a.q}</td><td>{a.id}</td><td>{a.r}</td></tr>)}</tbody></table>}</div>
   <div className="box noprint"><b>學生學習狀況</b><p className="note" style={{margin:"4px 0"}}>歸零只會清除積分，精熟紀錄會保留。</p>{st.length>0&&<div className="row"><button className="btn ghost sm" onClick={csv}>⬇️ 下載積分 CSV</button><button className="btn ghost sm" onClick={reload}>🔄 重新整理</button><button className="btn sm" onClick={()=>rc?reset():setRc(true)}>{rc?"確認：全班積分歸零":"全班積分歸零"}</button>{rc&&<button className="btn ghost sm" onClick={()=>setRc(false)}>取消</button>}</div>}{st.length===0?<p className="note">還沒有學生開始使用。</p>:<table className="tbl"><thead><tr><th>座號</th><th>名稱</th><th>積分</th><th>測驗次數</th><th>精熟字數</th><th></th></tr></thead><tbody>{st.map(p=><tr key={p.id}><td>{p.seat}</td><td>{p.animal} {p.name}</td><td>{p.score||0}</td><td>{p.quizzes||0}</td><td>{Object.values(p.m||{}).filter(v=>v>=MAST).length}</td><td><button className="btn ghost sm" onClick={()=>one(p)}>歸零</button></td></tr>)}</tbody></table>}</div></div>}
 
 function App(){
