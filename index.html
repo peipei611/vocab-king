@@ -74,11 +74,17 @@ const CFG={apiKey:"AIzaSyC6sNBox_bFjC9bYMlYQYQ2xT97hHpdhKc",authDomain:"vocab-ki
 const TEACHER="pfchenn611@gmail.com";
 firebase.initializeApp(CFG);
 const ANIMALS=[["🐶","小狗"],["🐱","小貓"],["🐰","兔兔"],["🐻","小熊"],["🐼","貓熊"],["🦊","狐狸"],["🐸","青蛙"],["🐥","小雞"],["🦁","獅子"],["🐯","老虎"]];
-const LV=[[0,"蛋殼見習生","🥚","100 分以下"],[100,"字母啃食怪","🔤","100–300"],[300,"單字大胃王","🍔","300–600"],[600,"詞彙美食家","🍰","600–1000"],[1000,"傳說級飼養員","🏆","1000–1500"],[1500,"至尊單字王","👑","1500 以上"]];
+const LV=[[0,"蛋殼見習生","🥚","100 分以下"],[100,"字母啃食怪","🔤","100–300"],[300,"單字大胃王","🍔","300–500"],[500,"詞彙美食家","🍰","500–800"],[800,"傳說級飼養員","🏆","800–1200"],[1200,"至尊單字王","👑","1200 以上"]];
 const lvOf=s=>{let k=0;LV.forEach((l,i)=>{if((s||0)>=l[0])k=i});return k};
 const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
 const norm=s=>String(s).toLowerCase().replace(/\s+/g,"");
 const uniq=a=>[...new Map(a.map(w=>[w.en,w])).values()];
+const DAILY=125,MAST=3;
+const mkey=w=>norm(w.en).replace(/[^a-z0-9]/g,"_")||"_";
+const cntM=(m,w)=>(m&&m[mkey(w)])||0;
+const isM=(m,w)=>cntM(m,w)>=MAST;
+const dayKey=()=>{const d=new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()};
+const dayGain=p=>p&&p.daily&&p.daily.day===dayKey()?(p.daily.g||0):0;
 function speak(t){try{const s=window.speechSynthesis;s.cancel();const u=new SpeechSynthesisUtterance(t);u.lang="en-US";u.rate=.9;const vs=s.getVoices().filter(v=>/^en[-_]US/i.test(v.lang));u.voice=vs.find(v=>/Google US|Samantha|Aria|Jenny|Natural|Siri|Ava|Allison/i.test(v.name))||vs[0]||null;s.speak(u)}catch(e){}}
 
 function Av({a,score,size=48}){const k=lvOf(score);return <span className={"av l"+k} style={{width:size,height:size,fontSize:size*.6}}>{a}<i style={{fontSize:size*.36}}>{LV[k][2]}</i></span>}
@@ -101,13 +107,22 @@ function Setup({init,onSave,onCancel}){
   <p className="note">帳號會綁定你目前登入的帳號（Google 信箱）與這台裝置；換手機或電腦時，用同一個帳號登入即可。</p></div>}
 
 function ScopeSel({sets,sel,setSel,wn}){return <div className="box" style={{padding:"10px 14px"}}><label>📚 單字範圍　<select value={sel} onChange={e=>setSel(e.target.value)}><option value="*">全部</option>{sets.map(t=><option key={t} value={t}>{t}</option>)}{wn>0&&<option value="__wrong">📕 錯題區（{wn}）</option>}</select></label></div>}
-function MultiScope({sets,sel,setSel,wn,total}){
-  const tog=t=>setSel(sel.includes(t)?sel.filter(x=>x!==t):[...sel,t]);
+function MultiScope({sets,sel,setSel,wn,total,stat,u,battle}){
+  const tog=t=>{if(t==="__wrong")setSel(sel.includes(t)?[]:["__wrong"]);else{const b=sel.filter(x=>x!=="__wrong");setSel(b.includes(t)?b.filter(x=>x!==t):[...b,t])}};
+  const lab=t=>{const s=stat&&stat[t];return s?(s.u===0?"　✓":"　未精熟 "+s.u+"/"+s.t):""};
+  const wrongOnly=sel.length===1&&sel[0]==="__wrong";
+  let line;
+  if(battle)line=<span>目前範圍共 {total} 個單字</span>;
+  else if(wrongOnly)line=<span>📕 錯題練習：不加分、不扣分，答對就移出錯題區</span>;
+  else if(total===0)line=<span>目前範圍沒有單字</span>;
+  else if(u===0)line=<span>🌿 這個範圍的單字都精熟了，會進入複習模式（不加分、不扣分）</span>;
+  else if(u<10)line=<span style={{color:"var(--rd)",fontWeight:700}}>目前範圍共 {total} 個單字，未精熟只有 {u} 個（計分測驗至少需要 10 個，請多選幾個範圍）</span>;
+  else line=<span>目前範圍共 {total} 個單字，其中未精熟 {u} 個 ✅</span>;
   return <div className="box" style={{padding:"10px 14px"}}><b>📚 測驗範圍（可複選）</b>
-    <div className="chips"><button className={"cb"+(sel.length===0?" on":"")} onClick={()=>setSel([])}>{sel.length===0?"✓ ":""}全部</button>
-    {sets.map(t=><button key={t} className={"cb"+(sel.includes(t)?" on":"")} onClick={()=>tog(t)}>{sel.includes(t)?"✓ ":""}{t}</button>)}
+    <div className="chips"><button className={"cb"+(sel.length===0?" on":"")} onClick={()=>setSel([])}>{sel.length===0?"✓ ":""}全部{lab("__all")}</button>
+    {sets.map(t=><button key={t} className={"cb"+(sel.includes(t)?" on":"")} onClick={()=>tog(t)}>{sel.includes(t)?"✓ ":""}{t}{lab(t)}</button>)}
     {wn>0&&<button className={"cb"+(sel.includes("__wrong")?" on":"")} onClick={()=>tog("__wrong")}>{sel.includes("__wrong")?"✓ ":""}📕 錯題區（{wn}）</button>}</div>
-    <p className="note" style={{margin:"8px 0 0"}}>目前範圍共 {total} 個單字</p></div>}
+    <p className="note" style={{margin:"8px 0 0"}}>{line}</p></div>}
 const ms=t=>t&&t.toMillis?t.toMillis():0;
 const BQ=10,BSEC=15;
 function mkQs(pool,all){
@@ -124,7 +139,7 @@ function tally(room,upto){
     if(ho||go){const ht=ho?ms(a.h.at):1e15,gt=go?ms(a.g.at):1e15;if(ht<gt){hs+=5;first="h"}else if(gt<ht){gs+=5;first="g"}}
     h+=hs;g+=gs;if(ho)hc++;if(go)gc++;rows.push({ho,go,hs,gs,first})});
   return {h,g,hc,gc,rows}}
-function Battle({me,uid,isT,words,qScoped,qpicker,bcode,setBcode,onFinish,onExit,flash}){
+function Battle({me,uid,isT,words,qScoped,qpicker,capped,bcode,setBcode,onFinish,onExit,flash}){
   const db=firebase.firestore();
   const [room,setRoom]=useState(null),[jc,setJc]=useState(""),[busy,setBusy]=useState(false),[leave,setLeave]=useState(false),[,setTick]=useState(0);
   const sr=useRef({cur:-1,t0:0,closedAt:0,advCur:-1,advAt:0}),lastRef=useRef(null);
@@ -172,12 +187,13 @@ function Battle({me,uid,isT,words,qScoped,qpicker,bcode,setBcode,onFinish,onExit
   if(!bcode)return <div>
     <div className="row" style={{justifyContent:"flex-start",margin:"0 0 6px"}}><button className="btn ghost sm" style={{flex:"none",minWidth:0}} onClick={onExit}>← 回測驗</button></div>
     <h2 style={{textAlign:"center",margin:"4px 0 10px"}}>⚔️ 雙人對戰</h2>
+    {capped&&<div className="warn">🎉 今天的積分已達 125 分上限，請明天再來對戰！</div>}
     {qpicker}
     <div className="box"><b>🏠 建立房間</b><p className="note">用上面選的範圍出 10 題。建立後會得到一組房號，告訴同學就能加入。</p>
-      <button className="btn big" disabled={busy||words.length<4} onClick={create}>{busy?"處理中…":"建立房間"}</button></div>
+      <button className="btn big" disabled={busy||capped||words.length<4} onClick={create}>{busy?"處理中…":"建立房間"}</button></div>
     <div className="box"><b>🚪 加入房間</b><input type="text" inputMode="numeric" maxLength={4} value={jc} onChange={e=>setJc(e.target.value.replace(/\D/g,""))} onKeyDown={e=>{if(e.key==="Enter")join()}} placeholder="輸入同學給你的 4 位數房號"/>
-      <button className="btn big" disabled={busy||jc.length!==4} onClick={join}>{busy?"處理中…":"加入對戰"}</button></div>
-    <div className="box"><b>📖 對戰規則</b><p className="note" style={{lineHeight:1.8}}>兩人同時作答相同的 10 題，每題限時 15 秒。<br/>答對 +10 分，最先答對的人再 +5 分。<br/>結束後比總分：勝 +5、平手 +3、敗 +1 個積分。<br/>為避免互刷：每人每天最多 5 場計分，和同一位同學每天最多 2 場計分。</p></div></div>;
+      <button className="btn big" disabled={busy||capped||jc.length!==4} onClick={join}>{busy?"處理中…":"加入對戰"}</button></div>
+    <div className="box"><b>📖 對戰規則</b><p className="note" style={{lineHeight:1.8}}>兩人同時作答相同的 10 題，每題限時 15 秒。<br/>答對 +10 分，最先答對的人再 +5 分。<br/>結束後比總分：勝 +5、平手 +3、敗 +1 個積分。<br/>為避免互刷：每人每天最多 5 場計分，和同一位同學每天最多 2 場計分。對戰得分也計入每天 125 分的上限，對戰不會倒扣、也不累計精熟。</p></div></div>;
   if(room===null)return <div className="empty"><div className="big">🐣</div><b>連線中…</b></div>;
   if(room===false)return <Empty icon="🚪" t="房間已不存在" s="房間可能被建立者取消，或已過期"><button className="btn" onClick={()=>setBcode(null)}>回到對戰首頁</button></Empty>;
   if(room.status==="waiting")return <div><div className="box" style={{textAlign:"center"}}><div className="note">你的房號</div><div className="code">{bcode}</div>
@@ -187,7 +203,7 @@ function Battle({me,uid,isT,words,qScoped,qpicker,bcode,setBcode,onFinish,onExit
   if(room.status==="done"){const T=tally(room,BQ),mine=isHost?T.h:T.g,theirs=isHost?T.g:T.h,res=mine>theirs?"win":mine<theirs?"lose":"draw",rid=bcode+"-"+room.createdAt,last=me.battle&&me.battle.last&&me.battle.last.id===rid?me.battle.last:null;
     const wr=room.questions.filter((q,i)=>!(isHost?T.rows[i].ho:T.rows[i].go));
     return <div><div className="box" style={{textAlign:"center"}}><div style={{fontSize:64}}>{res==="win"?"🏆":res==="draw"?"🤝":"💪"}</div><b style={{fontSize:22}}>{res==="win"?"你贏了！":res==="draw"?"平手！":"這次輸了，再接再厲！"}</b>
-      <p className="note" style={{margin:"6px 0 0"}}>{isT?"老師帳號不計入積分":last?(last.capped?"今天的對戰計分已達上限，本場不計入積分":`本場獲得 +${last.gain} 個積分`):"計分中…"}</p></div>
+      <p className="note" style={{margin:"6px 0 0"}}>{isT?"老師帳號不計入積分":last?(last.capped?"今天的對戰計分或積分已達上限，本場不計入積分":`本場獲得 +${last.gain} 個積分`):"計分中…"}</p></div>
       {Hd({T})}<div className="note" style={{textAlign:"center",marginBottom:10}}>你答對 {isHost?T.hc:T.gc} / {BQ} 題，對手答對 {isHost?T.gc:T.hc} / {BQ} 題</div>
       <div className="box"><b>你答錯的單字</b>{wr.length===0?<p className="note">全部答對，太強了！</p>:wr.map((q,i)=><div className="wr" key={i}><span><b>{q.w.en}</b> <small className="note">{q.w.kk}</small></span><span>{q.w.zh}</span></div>)}</div>
       <div className="row"><button className="btn" onClick={()=>setBcode(null)}>⚔️ 再來一場</button><button className="btn ghost" onClick={()=>{setBcode(null);onExit()}}>回測驗</button></div></div>}
@@ -219,59 +235,91 @@ function Cards({words,teacher,goTeach,picker}){
   <div className="row"><button className="btn" onClick={()=>speak(w.en)}>🔊 單字發音</button><button className="btn" onClick={()=>speak(w.ex)}>🔊 播放例句</button></div>
   <div className="row"><button className="btn ghost" onClick={()=>go(-1)}>◀ 上一個</button><button className="btn ghost" onClick={()=>go(1)}>下一個 ▶</button></div></div>}
 
-function Quiz({words,scoped,picker,onDone,onBattle,auto}){
-  const [mode,setMode]=useState(null),[qs,setQs]=useState([]),[k,setK]=useState(0),[res,setRes]=useState(null),[txt,setTxt]=useState(""),[log,setLog]=useState([]);
-  const start=m=>{let pool=m==="fill"?scoped.filter(w=>w.en.length>=3):scoped;if(!pool.length)pool=scoped;pool=uniq(pool);
-    const base=shuffle(pool),list=[];for(let i=0;i<10;i++)list.push(base[i%base.length]);
-    setQs(list.map(w=>({w,opts:m==="fill"?null:shuffle([w,...shuffle(uniq(words).filter(x=>x.en!==w.en&&x.zh!==w.zh)).slice(0,3)])})));
-    setMode(m);setK(0);setRes(null);setTxt("");setLog([])};
+const KB={review:"🌿 複習模式：不加分、不扣分",practice:"📕 錯題練習：不加分、不扣分，答對就移出錯題區",sprint:"🏁 最後衝刺：只剩少數未精熟的單字，沒有全對獎勵"};
+function Quiz({words,scoped,m,practice,wrongList,capped,gToday,sel,stat,picker,onAnswer,onDone,onBattle,auto}){
+  const [mode,setMode]=useState(null),[kind,setKind]=useState(""),[qs,setQs]=useState([]),[k,setK]=useState(0),[res,setRes]=useState(null),[txt,setTxt]=useState(""),[log,setLog]=useState([]),[msg,setMsg]=useState("");
+  const plan=mo=>{const okW=w=>mo!=="fill"||w.en.length>=3;
+    if(practice){const pool=uniq(wrongList).filter(okW);return pool.length?{kind:"practice",pool,n:Math.min(10,pool.length)}:{need:"錯題區裡沒有可以出填空題的單字（填空題只出 3 個字母以上的單字），請換一種題型。"}}
+    const pool=uniq(scoped).filter(okW);
+    if(!pool.length)return {need:"這個範圍沒有可以出題的單字，請換一個範圍或題型。"};
+    const U=pool.filter(w=>!isM(m,w));
+    if(!U.length)return {kind:"review",pool,n:Math.min(10,pool.length)};
+    if(capped)return {need:"🎉 今天的積分已達 "+DAILY+" 分上限，請明天再來玩！\n今天還可以用單字卡、錯題區練習，或選已全部精熟的範圍做複習。"};
+    if(U.length>=10)return {kind:"score",pool:U,n:10};
+    const A=uniq(words).filter(okW).filter(w=>!isM(m,w));
+    if(A.length<10)return {kind:"sprint",pool:A,n:A.length};
+    const oth=Object.keys(stat).filter(x=>x!=="__all"&&!sel.includes(x)&&stat[x].u>0).map(x=>x+"（未精熟 "+stat[x].u+"）");
+    return {need:"已選範圍的未精熟單字只有 "+U.length+" 個，一回至少需要 10 個。\n請回到上面多選幾個範圍"+(oth.length?"，例如："+oth.join("、"):"")+"。"}};
+  const start=mo=>{const p=plan(mo);if(p.need){setMsg(p.need);return}
+    setMsg("");const base=shuffle(p.pool).slice(0,p.n),A=uniq(words);
+    setQs(base.map(w=>({w,opts:mo==="fill"?null:shuffle([w,...shuffle(A.filter(x=>x.en!==w.en&&x.zh!==w.zh)).slice(0,3)])})));
+    setKind(p.kind);setMode(mo);setK(0);setRes(null);setTxt("");setLog([])};
   useEffect(()=>{if(auto&&words.length>=4&&scoped.length)start(auto)},[]);
   if(words.length<4)return <Empty icon="📝" t="單字還不夠" s={`至少需要 4 個單字才能出題（目前 ${words.length} 個）`}/>;
   if(!mode&&!scoped.length)return <div>{picker}<Empty icon="📝" t="這個範圍沒有單字" s="請換一個單字範圍"/></div>;
-  if(!mode)return <div><h2 style={{textAlign:"center"}}>選一種測驗吧！</h2>{picker}<div className="modes">
+  if(!mode)return <div><h2 style={{textAlign:"center"}}>選一種測驗吧！</h2>{picker}
+    {msg&&<div className="warn" style={{whiteSpace:"pre-line"}}>{msg}</div>}
+    <div className="note" style={{textAlign:"center",margin:"2px 0 8px"}}>今天已獲得 {gToday} / {DAILY} 分</div><div className="modes">
     <button className="mode" onClick={()=>start("en2zh")}><b>🇬🇧 英選中</b><span>看英文，從四個選項選出中文意思</span></button>
     <button className="mode" onClick={()=>start("zh2en")}><b>🇹🇼 中選英</b><span>看中文，從四個選項選出英文單字</span></button>
     <button className="mode" onClick={()=>start("fill")}><b>✏️ 填空</b><span>給中文與頭尾字母，輸入完整單字（答對每題 +3 分）</span></button>
     <button className="mode" onClick={onBattle} style={{borderColor:"var(--pk)"}}><b>⚔️ 雙人對戰</b><span>和同學用房號連線，同時搶答 10 題比高下</span></button></div>
-    <p className="note" style={{textAlign:"center"}}>每回 10 題。英選中、中選英答對 +2 分，填空答對 +3 分，十題全對再 +5 分，答錯不扣分</p></div>;
-  const q=qs[k],w=q.w;
-  const reveal=(ok,ans)=>{setRes({ok,ans});speak(w.en)};
-  const next=()=>{const nl=[...log,{w,ok:res.ok}];
-    if(k>=9){const c=nl.filter(x=>x.ok).length;onDone({mode,total:10,correct:c,bonus:c===10?5:0,gain:c*(mode==="fill"?3:2)+(c===10?5:0),all:nl,wrong:nl.filter(x=>!x.ok).map(x=>x.w)})}
+    <p className="note" style={{textAlign:"center",lineHeight:1.7}}>每回 10 題，不會重複。英選中、中選英答對 +2 分，填空答對 +3 分，十題全對再 +5 分。<br/>答錯 −1 分（最低 0 分），不確定可以按「我不知道」，不扣分。<br/>同一個單字在測驗中累計答對 3 次就算「精熟」，之後不再出題、不再加分。<br/>每天最多獲得 {DAILY} 分。</p></div>;
+  const n=qs.length,q=qs[k],w=q.w,scoring=kind==="score"||kind==="sprint";
+  const reveal=(ok,ans,skip)=>{const perfect=kind==="score"&&n===10&&k===9&&ok&&log.every(x=>x.ok);
+    const info=onAnswer({w,ok,skip:!!skip,mode,kind,bonus:perfect})||{d:0};
+    setRes({ok,ans,skip:!!skip,...info});speak(w.en)};
+  const finish=(nl,cap)=>{const c=nl.filter(x=>x.ok).length;
+    onDone({mode,kind,total:nl.length,planned:n,correct:c,pen:nl.filter(x=>x.d<0).length,bonus:nl.some(x=>x.bonus)?5:0,gain:nl.reduce((a,x)=>a+x.d,0),all:nl,wrong:nl.filter(x=>!x.ok).map(x=>x.w),newM:nl.filter(x=>x.newM).map(x=>x.w),capped:!!cap})};
+  const next=()=>{const nl=[...log,{w,ok:res.ok,skip:res.skip,d:res.d||0,newM:!!res.newM,bonus:!!res.bonus}];
+    if(k>=n-1||res.capHit)finish(nl,res.capHit);
     else{setLog(nl);setK(k+1);setRes(null);setTxt("")}};
   const mid=w.en.slice(1,-1);
-  return <div><div className="cnt">第 {k+1} / 10 題</div><div className="prog"><div style={{width:(k+(res?1:0))*10+"%"}}/></div>
+  const idk=!res&&<button className="btn ghost big" style={{marginTop:2}} onClick={()=>reveal(false,null,true)}>🤔 我不知道（不扣分）</button>;
+  return <div>{KB[kind]&&<div className="note" style={{textAlign:"center",marginBottom:4}}>{KB[kind]}</div>}<div className="cnt">第 {k+1} / {n} 題</div><div className="prog"><div style={{width:(k+(res?1:0))/n*100+"%"}}/></div>
   {mode==="en2zh"&&<div className="q">{w.en}</div>}
   {mode!=="en2zh"&&<div className="q" style={{fontSize:30}}>{w.zh}</div>}
   {mode==="fill"?<div>
     <div className="hint">{w.en[0]}{[...mid].map((c,i)=>c===" "?" ":"＿")}{w.en.slice(-1)}</div>
     {!res&&<div><input type="text" autoCapitalize="none" autoComplete="off" value={txt} onChange={e=>setTxt(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&txt.trim())reveal(norm(txt)===norm(w.en),w.en)}} placeholder="輸入完整單字"/>
-    <button className="btn big" disabled={!txt.trim()} onClick={()=>reveal(norm(txt)===norm(w.en),w.en)}>確認答案</button></div>}
+    <button className="btn big" disabled={!txt.trim()} onClick={()=>reveal(norm(txt)===norm(w.en),w.en)}>確認答案</button><div style={{height:10}}/>{idk}</div>}
   </div>:<div style={{marginTop:14}}>{q.opts.map(o=>{const t=mode==="en2zh"?o.zh:o.en;const good=o.en===w.en;const chosen=res&&res.ans===o.en;
-    return <button key={o.en} className={"opt"+(res&&good?" ok":"")+(chosen&&!good?" no":"")} disabled={!!res} onClick={()=>reveal(good,o.en)}>{t}</button>})}</div>}
-  {res&&<div><div className={"fb "+(res.ok?"ok":"no")}>{res.ok?`✅ 答對了！+${mode==="fill"?3:2} 分`:<span>❌ 答錯了，正確答案：{mode==="en2zh"?w.zh:w.en}{mode==="fill"&&<span>（{w.en}）</span>}</span>}</div>
-    <button className="btn big" onClick={next}>{k>=9?"看結果 🎉":"下一題 ▶"}</button></div>}</div>}
+    return <button key={o.en} className={"opt"+(res&&good?" ok":"")+(chosen&&!good?" no":"")} disabled={!!res} onClick={()=>reveal(good,o.en)}>{t}</button>})}{idk}</div>}
+  {res&&<div><div className={"fb "+(res.ok?"ok":"no")}>{res.ok?<span>✅ 答對了！{scoring&&res.d>0?"+"+res.d+" 分":""}{res.bonus?"（含十題全對獎勵 +5）":""}{res.mc?"　精熟 "+res.mc+"/"+MAST:""}{res.newM?" 🎓 這個字精熟了，之後不再出題！":""}</span>
+    :res.skip?<span>🤔 沒關係，這題不扣分，已放進錯題區。答案：{w.en}　{w.zh}</span>
+    :<span>❌ 答錯了{res.d<0?"，−1 分":""}，正確答案：{mode==="en2zh"?w.zh:w.en}{mode==="fill"&&<span>（{w.en}）</span>}</span>}</div>
+    {res.capHit&&<div className="fb ok">🎊 今天的積分已達 {DAILY} 分上限，這回就到這裡，明天再來玩！</div>}
+    <button className="btn big" onClick={next}>{k>=n-1||res.capHit?"看結果 🎉":"下一題 ▶"}</button></div>}</div>}
 
 const MODE={en2zh:"英選中",zh2en:"中選英",fill:"填空",battle:"⚔️對戰"};
+const KIND={review:"複習",practice:"錯題練習",sprint:"最後衝刺"};
 function History({hist}){
   if(!hist.length)return null;
   const days=[];[...hist].sort((a,b)=>b.t-a.t).forEach(h=>{const d=new Date(h.t),k=(d.getMonth()+1)+"月"+d.getDate()+"日";let g=days.find(x=>x.k===k&&x.y===d.getFullYear());if(!g){g={k,y:d.getFullYear(),list:[]};days.push(g)}g.list.push(h)});
   const hm=t=>{const d=new Date(t);return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")};
-  return <div className="box" style={{marginTop:14}}><b>📅 我的測驗紀錄</b><p className="note" style={{margin:"4px 0 0"}}>共玩了 {hist.length} 次，最高 {Math.max(...hist.map(h=>h.correct))} / 10 題答對</p>
+  const gs=h=>h.kind==="review"||h.kind==="practice"?"不計分":(h.gain>0?"+":h.gain<0?"−":"+")+Math.abs(h.gain);
+  return <div className="box" style={{marginTop:14}}><b>📅 我的測驗紀錄</b><p className="note" style={{margin:"4px 0 0"}}>共玩了 {hist.length} 次，最高 {Math.max(...hist.map(h=>h.correct))} 題答對</p>
   {days.map(g=><div key={g.y+g.k}><div className="dayh"><span>{g.k}</span><span className="note">玩了 {g.list.length} 次</span></div>
-    {g.list.map(h=><div className="wr" key={h.t}><span>{hm(h.t)}　{MODE[h.mode]||h.mode}{h.scope?<small className="note">　{h.scope}</small>:null}</span><span><b>{h.correct}</b> / {h.total} 題　<span style={{color:"var(--pk)",fontWeight:900}}>+{h.gain}</span></span></div>)}</div>)}</div>}
+    {g.list.map(h=><div className="wr" key={h.t}><span>{hm(h.t)}　{MODE[h.mode]||h.mode}{KIND[h.kind]?"・"+KIND[h.kind]:""}{h.scope?<small className="note">　{h.scope}</small>:null}</span><span><b>{h.correct}</b> / {h.total} 題　<span style={{color:h.gain<0&&h.kind!=="review"?"var(--rd)":"var(--pk)",fontWeight:900}}>{gs(h)}</span></span></div>)}</div>)}</div>}
 function Result({r,hist,retry,goCard}){
   if(!r&&!hist.length)return <Empty icon="📊" t="還沒有測驗結果" s="完成一次測驗後，成績會顯示在這裡"/>;
   if(!r)return <div><History hist={hist}/><div className="row"><button className="btn ghost" onClick={goCard}>🃏 返回單字卡</button></div></div>;
-  const pct=Math.round(r.correct/r.total*100);
-  return <div><div className="box" style={{textAlign:"center"}}><div style={{fontSize:56}}>{pct===100?"🏆":pct>=60?"🎉":"💪"}</div><b>本回獲得 +{r.gain} 分</b>{r.bonus>0&&<div className="note">含十題全對獎勵 +5 分</div>}</div>
+  const pct=Math.round(r.correct/r.total*100),sc=r.kind==="score"||r.kind==="sprint";
+  return <div><div className="box" style={{textAlign:"center"}}><div style={{fontSize:56}}>{pct===100?"🏆":pct>=60?"🎉":"💪"}</div>
+    <b>{sc?"本回 "+(r.gain>=0?"+":"−")+Math.abs(r.gain)+" 分":r.kind==="review"?"複習完成（不計分）":"錯題練習完成（不計分）"}</b>
+    {r.bonus>0&&<div className="note">含十題全對獎勵 +5 分</div>}{r.pen>0&&<div className="note">答錯扣分 −{r.pen} 分</div>}{r.kind==="sprint"&&<div className="note">最後衝刺：未精熟的單字不足 10 個</div>}</div>
+  {r.capped&&<div className="fb ok">🎊 今天的積分已達 {DAILY} 分上限，這回提前結束。明天再來玩！</div>}
   <div className="stats"><div className="stat"><b>{r.total}</b>總題數</div><div className="stat"><b style={{color:"var(--gn)"}}>{r.correct}</b>答對</div><div className="stat"><b style={{color:"var(--rd)"}}>{r.total-r.correct}</b>答錯</div><div className="stat"><b>{pct}%</b>正確率</div></div>
+  {r.newM&&r.newM.length>0&&<div className="box" style={{marginTop:12}}><b>🎓 本回新精熟的單字</b>{r.newM.map((w,i)=><div className="wr" key={i}><span><b>{w.en}</b> <small className="note">{w.kk}</small></span><span>{w.zh}</span></div>)}</div>}
   <div className="box" style={{marginTop:12}}><b>答錯的單字</b>{r.wrong.length===0?<p className="note">全部答對，太強了！</p>:r.wrong.map((w,i)=><div className="wr" key={i}><span><b>{w.en}</b> <small className="note">{w.kk}</small></span><span>{w.zh}</span></div>)}</div>
   <p className="note" style={{textAlign:"center"}}>答錯的單字已放進「錯題區」，下次答對就會自動移除。</p><div className="row"><button className="btn" onClick={retry}>🔁 重新測驗</button><button className="btn ghost" onClick={goCard}>🃏 返回單字卡</button></div><History hist={hist}/></div>}
 
-function Board({players,meId}){
-  if(!players.length)return <Empty icon="🏆" t="排行榜還是空的" s="完成測驗拿到分數就會上榜"/>;
-  return <div>{players.map((p,i)=><div key={p.id} className={"rk"+(p.id===meId?" me":"")}><div className="n">{["🥇","🥈","🥉"][i]||i+1}</div><Av a={p.animal} score={p.score} size={42}/><div className="nm">{p.name}<small>Lv.{lvOf(p.score)+1} {LV[lvOf(p.score)][1]}</small></div><div className="sc">{p.score||0}</div></div>)}</div>}
+function Board({players,meId,ts,onRefresh}){
+  const hm=ts?String(new Date(ts).getHours()).padStart(2,"0")+":"+String(new Date(ts).getMinutes()).padStart(2,"0"):"";
+  const bar=<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:8}}><span className="note">{ts?"更新於 "+hm+"（每分鐘自動更新）":"載入中…"}</span><button className="btn ghost sm" onClick={onRefresh}>🔄 重新整理</button></div>;
+  if(!ts)return <div>{bar}<div className="empty"><div className="big">🐣</div><b>載入中…</b></div></div>;
+  if(!players.length)return <div>{bar}<Empty icon="🏆" t="排行榜還是空的" s="完成測驗拿到分數就會上榜"/></div>;
+  return <div>{bar}{players.map((p,i)=><div key={p.id} className={"rk"+(p.id===meId?" me":"")}><div className="n">{["🥇","🥈","🥉"][i]||i+1}</div><Av a={p.animal} score={p.score} size={42}/><div className="nm">{p.name}<small>Lv.{lvOf(p.score)+1} {LV[lvOf(p.score)][1]}</small></div><div className="sc">{p.score||0}</div></div>)}</div>}
 
 function Login({flash}){
   const [a,setA]=useState(""),[p,setP]=useState(""),[b,setB]=useState(false);
@@ -281,7 +329,7 @@ function Login({flash}){
   <input type="password" value={p} onChange={e=>setP(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&a&&p)go()}} placeholder="密碼"/>
   <button className="btn big" disabled={!a||!p||b} onClick={go}>{b?"登入中…":"登入"}</button></div>}
 
-function Teach({words,save,flash,players}){
+function Teach({words,save,flash,players,reload}){
   const [txt,setTxt]=useState(""),[title,setTitle]=useState(""),[rc,setRc]=useState(false),[ds,setDs]=useState(""),[openS,setOpenS]=useState({}),[found,setFound]=useState([]),[bad,setBad]=useState(""),[clr,setClr]=useState(false),[acc,setAcc]=useState([]),[busy,setBusy]=useState("");
   const parse=()=>{try{const m=txt.match(/\[[\s\S]*\]/);const a=JSON.parse(m?m[0]:txt);const ok=a.filter(w=>w&&w.en&&w.zh).map(w=>({en:String(w.en).trim(),kk:w.kk||"",zh:w.zh,pos:w.pos||"",ex:w.ex||"",exzh:w.exzh||""}));if(!ok.length)throw 0;setFound(ok);setBad("")}catch(e){setBad("格式不對，請貼上 Claude 提供的完整單字資料（以 [ 開頭、以 ] 結尾）")}};
   const kf=w=>norm(w.set||"")+"|"+norm(w.en);
@@ -293,9 +341,9 @@ function Teach({words,save,flash,players}){
       setBusy(`建立中 ${n}/34`);await new Promise(r=>setTimeout(r,250))}
     setAcc(out);setBusy("")};
   const st=players.filter(p=>p.seat).sort((a,b)=>a.seat.localeCompare(b.seat));
-  const reset=async()=>{try{const db=firebase.firestore(),b=db.batch();st.forEach(p=>b.update(db.collection("players").doc(p.id),{score:0}));await b.commit();setRc(false);flash("已將全班積分歸零")}catch(e){flash("歸零失敗："+(e.code||""))}};
-  const one=async p=>{try{await firebase.firestore().collection("players").doc(p.id).update({score:0});flash(p.seat+" 號已歸零")}catch(e){flash("歸零失敗："+(e.code||""))}};
-  const csv=()=>{const q=x=>'"'+String(x).replace(/"/g,'""')+'"';const t="座號,名稱,積分,測驗次數\n"+st.map(p=>[p.seat,q(p.name),p.score||0,p.quizzes||0].join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+t],{type:"text/csv"}));a.download="積分_"+new Date().toISOString().slice(0,10)+".csv";a.click()};
+  const reset=async()=>{try{const db=firebase.firestore(),b=db.batch();st.forEach(p=>b.update(db.collection("players").doc(p.id),{score:0}));await b.commit();setRc(false);flash("已將全班積分歸零");reload()}catch(e){flash("歸零失敗："+(e.code||""))}};
+  const one=async p=>{try{await firebase.firestore().collection("players").doc(p.id).update({score:0});flash(p.seat+" 號已歸零");reload()}catch(e){flash("歸零失敗："+(e.code||""))}};
+  const csv=()=>{const q=x=>'"'+String(x).replace(/"/g,'""')+'"';const mc=p=>Object.values(p.m||{}).filter(v=>v>=MAST).length;const t="座號,名稱,積分,測驗次數,精熟字數\n"+st.map(p=>[p.seat,q(p.name),p.score||0,p.quizzes||0,mc(p)].join(",")).join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(["\ufeff"+t],{type:"text/csv"}));a.download="積分_"+new Date().toISOString().slice(0,10)+".csv";a.click()};
   return <div>
   <div className="box noprint"><b>匯入單字</b><p className="note">把 Claude 辨識教材圖片後給你的單字資料整段貼在這裡。</p>
     <input type="text" value={title} onChange={e=>setTitle(e.target.value)} placeholder="這份單字的標題，例如：英雜12月"/>
@@ -314,31 +362,49 @@ function Teach({words,save,flash,players}){
   <div className="box"><b>學生帳號（1401–1434）</b><p className="note noprint">按下後一次建立全班帳號與隨機密碼。密碼只會在這裡顯示一次，請立刻列印或截圖保存。已建立過的帳號不會被改動。</p>
     <div className="row noprint"><button className="btn" disabled={!!busy} onClick={make}>{busy||"建立全班帳號"}</button>{acc.length>0&&<button className="btn ghost" onClick={()=>window.print()}>🖨️ 列印</button>}</div>
     {acc.length>0&&<table className="tbl"><thead><tr><th>座號</th><th>帳號</th><th>密碼</th></tr></thead><tbody>{acc.map(a=><tr key={a.id}><td>{a.q}</td><td>{a.id}</td><td>{a.pw}</td></tr>)}</tbody></table>}</div>
-  <div className="box noprint"><b>學生學習狀況</b>{st.length>0&&<div className="row"><button className="btn ghost sm" onClick={csv}>⬇️ 下載積分 CSV</button><button className="btn sm" onClick={()=>rc?reset():setRc(true)}>{rc?"確認：全班積分歸零":"全班積分歸零"}</button>{rc&&<button className="btn ghost sm" onClick={()=>setRc(false)}>取消</button>}</div>}{st.length===0?<p className="note">還沒有學生開始使用。</p>:<table className="tbl"><thead><tr><th>座號</th><th>名稱</th><th>積分</th><th>測驗次數</th><th></th></tr></thead><tbody>{st.map(p=><tr key={p.id}><td>{p.seat}</td><td>{p.animal} {p.name}</td><td>{p.score||0}</td><td>{p.quizzes||0}</td><td><button className="btn ghost sm" onClick={()=>one(p)}>歸零</button></td></tr>)}</tbody></table>}</div></div>}
+  <div className="box noprint"><b>學生學習狀況</b><p className="note" style={{margin:"4px 0"}}>歸零只會清除積分，精熟紀錄會保留。</p>{st.length>0&&<div className="row"><button className="btn ghost sm" onClick={csv}>⬇️ 下載積分 CSV</button><button className="btn ghost sm" onClick={reload}>🔄 重新整理</button><button className="btn sm" onClick={()=>rc?reset():setRc(true)}>{rc?"確認：全班積分歸零":"全班積分歸零"}</button>{rc&&<button className="btn ghost sm" onClick={()=>setRc(false)}>取消</button>}</div>}{st.length===0?<p className="note">還沒有學生開始使用。</p>:<table className="tbl"><thead><tr><th>座號</th><th>名稱</th><th>積分</th><th>測驗次數</th><th>精熟字數</th><th></th></tr></thead><tbody>{st.map(p=><tr key={p.id}><td>{p.seat}</td><td>{p.animal} {p.name}</td><td>{p.score||0}</td><td>{p.quizzes||0}</td><td>{Object.values(p.m||{}).filter(v=>v>=MAST).length}</td><td><button className="btn ghost sm" onClick={()=>one(p)}>歸零</button></td></tr>)}</tbody></table>}</div></div>}
 
 function App(){
-  const [u,setU]=useState(undefined),[me,setMe]=useState(null),[ml,setMl]=useState(false),[words,setWords]=useState([]),[players,setPlayers]=useState([]);
+  const [u,setU]=useState(undefined),[me,setMe]=useState(null),[ml,setMl]=useState(false),[words,setWords]=useState([]),[players,setPlayers]=useState([]),[pts,setPts]=useState(0);
+  const P=useRef(null);
   const [tab,setTab]=useState("card"),[res,setRes]=useState(null),[help,setHelp]=useState(false),[edit,setEdit]=useState(false),[toast,setToast]=useState(""),[auto,setAuto]=useState(null),[sel,setSel]=useState("*"),[qsel,setQsel]=useState([]),[bt,setBt]=useState(false),[bcode,setBcode]=useState(null);
   const teacher=!!u&&u.email===TEACHER;
   const flash=m=>{setToast(m);setTimeout(()=>setToast(""),2800)};
   useEffect(()=>firebase.auth().onAuthStateChanged(x=>{setU(x||null);setMl(false);setMe(null);setTab("card")}),[]);
   useEffect(()=>{if(!u)return;const db=firebase.firestore(),un=[],er=e=>flash("讀取失敗："+(e.code||""));
-    if(teacher){setMe({name:"老師",animal:"🧑‍🏫",score:0});setMl(true)}else un.push(db.collection("players").doc(u.uid).onSnapshot(x=>{setMe(x.exists?x.data():null);setMl(true)},er));
+    if(teacher){setMe({name:"老師",animal:"🧑‍🏫",score:0});setMl(true)}else un.push(db.collection("players").doc(u.uid).onSnapshot(x=>{const d=x.exists?x.data():null;P.current=d;setMe(d);setMl(true)},er));
     un.push(db.collection("vocab").doc("list").onSnapshot(x=>setWords(x.exists?(x.data().items||[]):[]),er));
-    un.push(db.collection("players").orderBy("score","desc").limit(100).onSnapshot(q=>setPlayers(q.docs.map(d=>({id:d.id,...d.data()}))),er));
     return()=>un.forEach(f=>f())},[u&&u.uid]);
+  const loadPlayers=()=>firebase.firestore().collection("players").orderBy("score","desc").limit(100).get().then(q=>{setPlayers(q.docs.map(d=>({id:d.id,...d.data()})));setPts(Date.now())}).catch(e=>flash("讀取失敗："+(e.code||"")));
+  useEffect(()=>{if(!u||(tab!=="board"&&tab!=="teach"))return;loadPlayers();const id=setInterval(()=>{if(!document.hidden)loadPlayers()},60000);return()=>clearInterval(id)},[tab,u&&u.uid]);
   const wr=async fn=>{try{await fn()}catch(e){flash("儲存失敗："+(e.code||"請稍後再試"))}};
   const pdoc=()=>firebase.firestore().collection("players").doc(u.uid);
   const saveMe=p=>wr(async()=>{await pdoc().set({score:0,...(me||{}),...p,seat:u.email.split("@")[0].slice(2)});setEdit(false)});
   const saveWords=items=>wr(async()=>{await firebase.firestore().collection("vocab").doc("list").set({items});flash("已更新單字庫")});
-  const done=r=>{setRes(r);setTab("result");if(!teacher){const ws=new Set(me.wrong||[]);r.all.forEach(x=>x.ok?ws.delete(x.w.en):ws.add(x.w.en));const sc=qsel.length?qsel.map(x=>x==="__wrong"?"錯題區":x).join("、"):"全部",h=[...(me.history||[]),{t:Date.now(),mode:r.mode,correct:r.correct,total:r.total,gain:r.gain,scope:sc.slice(0,40)}].slice(-200);wr(()=>pdoc().set({...me,score:(me.score||0)+r.gain,quizzes:(me.quizzes||0)+1,wrong:[...ws],history:h,updated:Date.now()}))}};
+  const answer=info=>{
+    if(teacher||!me)return {d:0};
+    const p=P.current||me,day=dayKey(),g0=dayGain(p),ws=new Set(p.wrong||[]),scoring=info.kind==="score"||info.kind==="sprint";
+    let sc=p.score||0,m={...(p.m||{})},g=g0,d=0,mc,newM=false;
+    if(info.ok)ws.delete(info.w.en);else ws.add(info.w.en);
+    if(scoring&&info.ok){const add=(info.mode==="fill"?3:2)+(info.bonus?5:0),ga=Math.max(0,Math.min(add,DAILY-g0)),key=mkey(info.w),pc=m[key]||0,c=Math.min(MAST,pc+1);
+      sc+=ga;g+=ga;d=ga;m[key]=c;mc=c;newM=pc<MAST&&c>=MAST}
+    else if(scoring&&!info.skip&&sc>0){sc-=1;d=-1}
+    const np={...p,score:sc,m,wrong:[...ws],daily:{day,g},updated:Date.now()};
+    P.current=np;
+    wr(()=>pdoc().update({score:np.score,m:np.m,wrong:np.wrong,daily:np.daily,updated:np.updated}));
+    return {d,mc,newM,bonus:!!info.bonus,capHit:scoring&&g>=DAILY};
+  };
+  const done=r=>{setRes(r);setTab("result");if(!teacher){const p=P.current||me,sc=qsel.length?qsel.map(x=>x==="__wrong"?"錯題區":x).join("、"):"全部",
+      h=[...(p.history||[]),{t:Date.now(),mode:r.mode,...(r.kind&&r.kind!=="score"?{kind:r.kind}:{}),correct:r.correct,total:r.total,gain:r.gain,scope:sc.slice(0,40)}].slice(-200),q=(p.quizzes||0)+1;
+    P.current={...p,history:h,quizzes:q};wr(()=>pdoc().update({history:h,quizzes:q,updated:Date.now()}))}};
   const finishBattle=info=>{if(teacher||!me)return;
-    const d=new Date(),day=d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate(),b=me.battle&&me.battle.day===day?me.battle:{day,n:0,pairs:{}},pc=(b.pairs&&b.pairs[info.opp])||0;
-    const capped=b.n>=5||pc>=2,gain=capped?0:(info.res==="win"?5:info.res==="draw"?3:1);
+    const p=P.current||me,day=dayKey(),b=p.battle&&p.battle.day===day?p.battle:{day,n:0,pairs:{}},pc=(b.pairs&&b.pairs[info.opp])||0,g0=dayGain(p);
+    const capped=b.n>=5||pc>=2||g0>=DAILY,raw=capped?0:(info.res==="win"?5:info.res==="draw"?3:1),gain=Math.max(0,Math.min(raw,DAILY-g0));
     const nb={day,n:b.n+(capped?0:1),pairs:{...(b.pairs||{}),[info.opp]:pc+(capped?0:1)},last:{id:info.id,gain,capped}};
-    const ws=new Set(me.wrong||[]);info.rights.forEach(e=>ws.delete(e));info.wrongs.forEach(e=>ws.add(e));
-    const h=[...(me.history||[]),{t:Date.now(),mode:"battle",correct:info.correct,total:10,gain,scope:("對戰 "+info.oppName).slice(0,40)}].slice(-200);
-    wr(()=>pdoc().set({...me,score:(me.score||0)+gain,battle:nb,wrong:[...ws],history:h,updated:Date.now()}))};
+    const ws=new Set(p.wrong||[]);info.rights.forEach(e=>ws.delete(e));info.wrongs.forEach(e=>ws.add(e));
+    const h=[...(p.history||[]),{t:Date.now(),mode:"battle",correct:info.correct,total:10,gain,scope:("對戰 "+info.oppName).slice(0,40)}].slice(-200);
+    const np={...p,score:(p.score||0)+gain,battle:nb,wrong:[...ws],history:h,daily:{day,g:g0+gain},updated:Date.now()};
+    P.current=np;wr(()=>pdoc().update({score:np.score,battle:nb,wrong:np.wrong,history:h,daily:np.daily,updated:np.updated}))};
   const L=lvOf(me?me.score:0);
   const wrongList=((me&&me.wrong)||[]).map(e=>words.find(w=>w.en===e)).filter(Boolean);
   const sets=[...new Set(words.map(w=>w.set||"未分類"))];
@@ -347,7 +413,11 @@ function App(){
   const picker=<ScopeSel sets={sets} sel={sv} setSel={setSel} wn={wrongList.length}/>;
   const qv=qsel.filter(x=>x==="__wrong"?wrongList.length>0:sets.includes(x));
   const qScoped=qv.length===0?uniq(words):uniq([...qv.includes("__wrong")?wrongList:[],...words.filter(w=>qv.includes(w.set||"未分類"))]);
-  const qpicker=<MultiScope sets={sets} sel={qv} setSel={setQsel} wn={wrongList.length} total={qScoped.length}/>;
+  const mm=(me&&me.m)||{},allW=uniq(words),stat={__all:{t:allW.length,u:allW.filter(w=>!isM(mm,w)).length}};
+  sets.forEach(x=>{const ws=uniq(words.filter(w=>(w.set||"未分類")===x));stat[x]={t:ws.length,u:ws.filter(w=>!isM(mm,w)).length}});
+  const qU=qScoped.filter(w=>!isM(mm,w)).length,practice=qv.length===1&&qv[0]==="__wrong",gToday=dayGain(me),capped=!teacher&&gToday>=DAILY;
+  const qpicker=<MultiScope sets={sets} sel={qv} setSel={setQsel} wn={wrongList.length} total={qScoped.length} stat={stat} u={qU}/>;
+  const bpicker=<MultiScope sets={sets} sel={qv} setSel={setQsel} wn={wrongList.length} total={qScoped.length} stat={stat} u={qU} battle/>;
   const tabs=[["card","🃏","單字卡"],["quiz","📝","測驗"],["wrong","📕","錯題區"],["result","📊","結果"],["board","🏆","排行榜"],...(teacher?[["teach","👩‍🏫","教師"]]:[])];
   let body;
   if(u===undefined||(u&&!ml))body=<div className="empty" style={{paddingTop:120}}><div className="big">🐣</div><b>載入中…</b></div>;
@@ -358,16 +428,16 @@ function App(){
       <div><b>{me.name}</b><div className="lv">Lv.{L+1} {LV[L][1]}</div><button className="chip" onClick={()=>setHelp(true)}>稱號說明</button></div></div>
       <div style={{textAlign:"right"}}><span className="pts">⭐ {me.score||0}</span><div><button className="chip" onClick={()=>firebase.auth().signOut()}>登出</button></div></div></header>
     {tab==="card"&&<Cards words={scoped} picker={picker} teacher={teacher} goTeach={()=>setTab("teach")}/>}
-    {tab==="quiz"&&(bt?<Battle me={me} uid={u.uid} isT={teacher} words={words} qScoped={qScoped} qpicker={qpicker} bcode={bcode} setBcode={setBcode} onFinish={finishBattle} onExit={()=>{setBt(false)}} flash={flash}/>
-      :<Quiz key={auto?auto.t:0} words={words} scoped={qScoped} picker={qpicker} auto={auto&&auto.m} onBattle={()=>setBt(true)} onDone={r=>{setAuto(null);done(r)}}/>)}
+    {tab==="quiz"&&(bt?<Battle me={me} uid={u.uid} isT={teacher} words={words} qScoped={qScoped} qpicker={bpicker} capped={capped} bcode={bcode} setBcode={setBcode} onFinish={finishBattle} onExit={()=>{setBt(false)}} flash={flash}/>
+      :<Quiz key={auto?auto.t:0} words={words} scoped={qScoped} m={mm} practice={practice} wrongList={wrongList} capped={capped} gToday={gToday} sel={qv} stat={stat} picker={qpicker} onAnswer={answer} auto={auto&&auto.m} onBattle={()=>setBt(true)} onDone={r=>{setAuto(null);done(r)}}/>)}
     {tab==="wrong"&&<Wrong list={wrongList} go={t=>{if(t==="quiz")setQsel(["__wrong"]);else setSel("__wrong");setTab(t)}}/>}
     {tab==="result"&&<Result r={res} hist={me.history||[]} retry={()=>{setAuto({m:res.mode,t:Date.now()});setTab("quiz")}} goCard={()=>setTab("card")}/>}
-    {tab==="board"&&<Board players={players.filter(p=>p.seat)} meId={u.uid}/>}
-    {tab==="teach"&&teacher&&<Teach words={words} save={saveWords} flash={flash} players={players}/>}
+    {tab==="board"&&<Board players={players.filter(p=>p.seat)} meId={u.uid} ts={pts} onRefresh={loadPlayers}/>}
+    {tab==="teach"&&teacher&&<Teach words={words} save={saveWords} flash={flash} players={players} reload={loadPlayers}/>}
     <nav><div>{tabs.map(([k,e,n])=><button key={k} className={tab===k?"on":""} onClick={()=>setTab(k)}><span>{e}</span>{n}</button>)}</div></nav>
     {help&&<div className="mask" onClick={()=>setHelp(false)}><div className="modal" onClick={e=>e.stopPropagation()}><h3 style={{marginTop:0}}>稱號說明</h3>
       {LV.map((l,i)=><div className="wr" key={i} style={i===L?{background:"var(--pk2)",borderRadius:12,padding:"9px 8px"}:null}><span>{l[2]} Lv.{i+1} {l[1]}</span><span className="note">{l[3]}</span></div>)}
-      <p className="note">答對一題 +2 分（填空題 +3 分），十題全對再 +5 分，答錯不扣分。</p><button className="btn big" onClick={()=>setHelp(false)}>知道了</button></div></div>}</div>;
+      <p className="note" style={{lineHeight:1.7}}>答對一題 +2 分（填空題 +3 分），十題全對再 +5 分；答錯 −1 分（最低 0 分），按「我不知道」不扣分。<br/>同一個單字累計答對 3 次就「精熟」，之後不再出題、不加分；範圍內的字都精熟後會進入複習模式（不計分）。<br/>每天最多獲得 {DAILY} 分，達到上限請明天再來。</p><button className="btn big" onClick={()=>setHelp(false)}>知道了</button></div></div>}</div>;
   return <div>{body}{toast&&<div className="toast">{toast}</div>}</div>}
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script></body></html>
