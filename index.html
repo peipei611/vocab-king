@@ -79,7 +79,7 @@ const lvOf=s=>{let k=0;LV.forEach((l,i)=>{if((s||0)>=l[0])k=i});return k};
 const shuffle=a=>{const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]]}return b};
 const norm=s=>String(s).toLowerCase().replace(/\s+/g,"");
 const uniq=a=>[...new Map(a.map(w=>[w.en,w])).values()];
-const DAILY=250,MAST=3;
+const CAP_ON=false,DAILY=250,MAST=3; // CAP_ON：每日積分上限開關（false=關閉；改成 true 即恢復 DAILY 分上限）
 const mkey=w=>norm(w.en).replace(/[^a-z0-9]/g,"_")||"_";
 const cntM=(m,w)=>(m&&m[mkey(w)])||0;
 const isM=(m,w)=>cntM(m,w)>=MAST;
@@ -194,7 +194,7 @@ function Battle({me,uid,isT,words,qScoped,qpicker,capped,bcode,setBcode,onFinish
       <button className="btn big" disabled={busy||capped||words.length<4} onClick={create}>{busy?"處理中…":"建立房間"}</button></div>
     <div className="box"><b>🚪 加入房間</b><input type="text" inputMode="numeric" maxLength={4} value={jc} onChange={e=>setJc(e.target.value.replace(/\D/g,""))} onKeyDown={e=>{if(e.key==="Enter")join()}} placeholder="輸入同學給你的 4 位數房號"/>
       <button className="btn big" disabled={busy||capped||jc.length!==4} onClick={join}>{busy?"處理中…":"加入對戰"}</button></div>
-    <div className="box"><b>📖 對戰規則</b><p className="note" style={{lineHeight:1.8}}>兩人同時作答相同的 10 題，每題限時 15 秒。<br/>答對 +10 分，最先答對的人再 +5 分。<br/>結束後比總分：勝 +5、平手 +3、敗 +1 個積分。<br/>為避免互刷：每人每天最多 5 場計分，和同一位同學每天最多 2 場計分。對戰得分也計入每天 {DAILY} 分的上限，對戰不會倒扣、也不累計精熟。</p></div></div>;
+    <div className="box"><b>📖 對戰規則</b><p className="note" style={{lineHeight:1.8}}>兩人同時作答相同的 10 題，每題限時 15 秒。<br/>答對 +10 分，最先答對的人再 +5 分。<br/>結束後比總分：勝 +5、平手 +3、敗 +1 個積分。<br/>為避免互刷：每人每天最多 5 場計分，和同一位同學每天最多 2 場計分。{CAP_ON?"對戰得分也計入每天 "+DAILY+" 分的上限，":""}對戰不會倒扣、也不累計精熟。</p></div></div>;
   if(room===null)return <div className="empty"><div className="big">🐣</div><b>連線中…</b></div>;
   if(room===false)return <Empty icon="🚪" t="房間已不存在" s="房間可能被建立者取消，或已過期"><button className="btn" onClick={()=>setBcode(null)}>回到對戰首頁</button></Empty>;
   if(room.status==="waiting")return <div><div className="box" style={{textAlign:"center"}}><div className="note">你的房號</div><div className="code">{bcode}</div>
@@ -272,13 +272,13 @@ function Quiz({words,scoped,m,practice,wrongList,capped,gToday,sel,stat,picker,o
     <p className="note" style={{textAlign:"center",lineHeight:1.7}}>每回最多 10 題，不會重複。不確定可以按「我不知道」。答錯的單字會放進錯題區，答對會從錯題區移除。</p></div>;
   if(!mode)return <div><h2 style={{textAlign:"center"}}>選一種測驗吧！</h2>{picker}
     {msg&&<div className="warn" style={{whiteSpace:"pre-line"}}>{msg}</div>}
-    <div className="note" style={{textAlign:"center",margin:"2px 0 8px"}}>今天已獲得 {gToday} / {DAILY} 分</div><div className="modes">
+    <div className="note" style={{textAlign:"center",margin:"2px 0 8px"}}>今天已獲得 {gToday} 分{CAP_ON?"（上限 "+DAILY+" 分）":""}</div><div className="modes">
     <button className="mode" onClick={()=>start("en2zh")}><b>🇬🇧 英選中</b><span>看英文，從四個選項選出中文意思</span></button>
     <button className="mode" onClick={()=>start("zh2en")}><b>🇹🇼 中選英</b><span>看中文，從四個選項選出英文單字</span></button>
     <button className="mode" onClick={()=>start("fill")}><b>✏️ 填空</b><span>給中文與頭尾字母，輸入完整單字（答對每題 +3 分）</span></button>
     <button className="mode" onClick={onBattle} style={{borderColor:"var(--pk)"}}><b>⚔️ 雙人對戰</b><span>和同學用房號連線，同時搶答 10 題比高下</span></button>
     <button className="mode" onClick={onSelf} style={{borderColor:"var(--gn)"}}><b>🌱 自我提升區</b><span>不計分的練習，可選題型，也能複習已精熟的單字</span></button></div>
-    <p className="note" style={{textAlign:"center",lineHeight:1.7}}>每回 10 題，不會重複。英選中、中選英答對 +2 分，填空答對 +3 分，十題全對再 +5 分。<br/>答錯 −1 分（最低 0 分），不確定可以按「我不知道」，不扣分。<br/>同一個單字在測驗中累計答對 3 次就算「精熟」，之後不再出題、不再加分。<br/>每天最多獲得 {DAILY} 分。</p></div>;
+    <p className="note" style={{textAlign:"center",lineHeight:1.7}}>每回 10 題，不會重複。英選中、中選英答對 +2 分，填空答對 +3 分，十題全對再 +5 分。<br/>答錯 −1 分（最低 0 分），不確定可以按「我不知道」，不扣分。<br/>同一個單字在測驗中累計答對 3 次就算「精熟」，之後不再出題、不再加分。{CAP_ON&&<span><br/>每天最多獲得 {DAILY} 分。</span>}</p></div>;
   const n=qs.length,q=qs[k],w=q.w,scoring=kind==="score"||kind==="sprint";
   const reveal=(ok,ans,skip)=>{const perfect=kind==="score"&&n===10&&k===9&&ok&&log.every(x=>x.ok);
     const info=onAnswer({w,ok,skip:!!skip,mode,kind,bonus:perfect})||{d:0};
@@ -423,20 +423,20 @@ function App(){
     const p=P.current||me,day=dayKey(),g0=dayGain(p),ws=new Set(p.wrong||[]),scoring=info.kind==="score"||info.kind==="sprint";
     let sc=p.score||0,m={...(p.m||{})},g=g0,d=0,mc,newM=false;
     if(info.ok)ws.delete(info.w.en);else ws.add(info.w.en);
-    if(scoring&&info.ok){const add=(info.mode==="fill"?3:2)+(info.bonus?5:0),ga=Math.max(0,Math.min(add,DAILY-g0)),key=mkey(info.w),pc=m[key]||0,c=Math.min(MAST,pc+1);
+    if(scoring&&info.ok){const add=(info.mode==="fill"?3:2)+(info.bonus?5:0),ga=CAP_ON?Math.max(0,Math.min(add,DAILY-g0)):add,key=mkey(info.w),pc=m[key]||0,c=Math.min(MAST,pc+1);
       sc+=ga;g+=ga;d=ga;m[key]=c;mc=c;newM=pc<MAST&&c>=MAST}
     else if(scoring&&!info.skip&&sc>0){sc-=1;d=-1}
     const np={...p,score:sc,m,wrong:[...ws],daily:{day,g},updated:Date.now()};
     P.current=np;
     wr(()=>pdoc().update({score:np.score,m:np.m,wrong:np.wrong,daily:np.daily,updated:np.updated}));
-    return {d,mc,newM,bonus:!!info.bonus,capHit:scoring&&g>=DAILY};
+    return {d,mc,newM,bonus:!!info.bonus,capHit:CAP_ON&&scoring&&g>=DAILY};
   };
   const done=r=>{setRes(r);setTab("result");if(!teacher){const p=P.current||me,sc=qsel.length?qsel.map(x=>x==="__wrong"?"錯題區":x).join("、"):"全部",
       h=[...(p.history||[]),{t:Date.now(),mode:r.mode,...(r.kind&&r.kind!=="score"?{kind:r.kind}:{}),correct:r.correct,total:r.total,gain:r.gain,scope:sc.slice(0,40)}].slice(-200),q=(p.quizzes||0)+(r.kind==="self"?0:1);
     P.current={...p,history:h,quizzes:q};wr(()=>pdoc().update({history:h,quizzes:q,updated:Date.now()}))}};
   const finishBattle=info=>{if(teacher||!me)return;
     const p=P.current||me,day=dayKey(),b=p.battle&&p.battle.day===day?p.battle:{day,n:0,pairs:{}},pc=(b.pairs&&b.pairs[info.opp])||0,g0=dayGain(p);
-    const capped=b.n>=5||pc>=2||g0>=DAILY,raw=capped?0:(info.res==="win"?5:info.res==="draw"?3:1),gain=Math.max(0,Math.min(raw,DAILY-g0));
+    const capped=b.n>=5||pc>=2||(CAP_ON&&g0>=DAILY),raw=capped?0:(info.res==="win"?5:info.res==="draw"?3:1),gain=CAP_ON?Math.max(0,Math.min(raw,DAILY-g0)):raw;
     const nb={day,n:b.n+(capped?0:1),pairs:{...(b.pairs||{}),[info.opp]:pc+(capped?0:1)},last:{id:info.id,gain,capped}};
     const ws=new Set(p.wrong||[]);info.rights.forEach(e=>ws.delete(e));info.wrongs.forEach(e=>ws.add(e));
     const h=[...(p.history||[]),{t:Date.now(),mode:"battle",correct:info.correct,total:10,gain,scope:("對戰 "+info.oppName).slice(0,40)}].slice(-200);
@@ -452,7 +452,7 @@ function App(){
   const qScoped=qv.length===0?uniq(words):uniq([...qv.includes("__wrong")?wrongList:[],...words.filter(w=>qv.includes(w.set||"未分類"))]);
   const mm=(me&&me.m)||{},allW=uniq(words),stat={__all:{t:allW.length,u:allW.filter(w=>!isM(mm,w)).length}};
   sets.forEach(x=>{const ws=uniq(words.filter(w=>(w.set||"未分類")===x));stat[x]={t:ws.length,u:ws.filter(w=>!isM(mm,w)).length}});
-  const qU=qScoped.filter(w=>!isM(mm,w)).length,practice=qv.length===1&&qv[0]==="__wrong",gToday=dayGain(me),capped=!teacher&&gToday>=DAILY;
+  const qU=qScoped.filter(w=>!isM(mm,w)).length,practice=qv.length===1&&qv[0]==="__wrong",gToday=dayGain(me),capped=CAP_ON&&!teacher&&gToday>=DAILY;
   const qpicker=<MultiScope sets={sets} sel={qv} setSel={setQsel} wn={wrongList.length} total={qScoped.length} stat={stat} u={qU}/>;
   const spicker=<MultiScope sets={sets} sel={qv} setSel={setQsel} wn={wrongList.length} total={qScoped.length} stat={stat} u={qU} self incl={incl}/>;
   const bpicker=<MultiScope sets={sets} sel={qv} setSel={setQsel} wn={wrongList.length} total={qScoped.length} stat={stat} u={qU} battle/>;
@@ -475,7 +475,7 @@ function App(){
     <nav><div>{tabs.map(([k,e,n])=><button key={k} className={tab===k?"on":""} onClick={()=>setTab(k)}><span>{e}</span>{n}</button>)}</div></nav>
     {help&&<div className="mask" onClick={()=>setHelp(false)}><div className="modal" onClick={e=>e.stopPropagation()}><h3 style={{marginTop:0}}>稱號說明</h3>
       {LV.map((l,i)=><div className="wr" key={i} style={i===L?{background:"var(--pk2)",borderRadius:12,padding:"9px 8px"}:null}><span>{l[2]} Lv.{i+1} {l[1]}</span><span className="note">{l[3]}</span></div>)}
-      <p className="note" style={{lineHeight:1.7}}>答對一題 +2 分（填空題 +3 分），十題全對再 +5 分；答錯 −1 分（最低 0 分），按「我不知道」不扣分。<br/>同一個單字累計答對 3 次就「精熟」，之後不再出題、不加分；範圍內的字都精熟後會進入複習模式（不計分）。<br/>每天最多獲得 {DAILY} 分，達到上限請明天再來。</p><button className="btn big" onClick={()=>setHelp(false)}>知道了</button></div></div>}</div>;
+      <p className="note" style={{lineHeight:1.7}}>答對一題 +2 分（填空題 +3 分），十題全對再 +5 分；答錯 −1 分（最低 0 分），按「我不知道」不扣分。<br/>同一個單字累計答對 3 次就「精熟」，之後不再出題、不加分；範圍內的字都精熟後會進入複習模式（不計分）。{CAP_ON&&<span><br/>每天最多獲得 {DAILY} 分，達到上限請明天再來。</span>}</p><button className="btn big" onClick={()=>setHelp(false)}>知道了</button></div></div>}</div>;
   return <div>{body}{toast&&<div className="toast">{toast}</div>}</div>}
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script></body></html>
